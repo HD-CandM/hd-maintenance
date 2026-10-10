@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HD Maintenance</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0b6b43">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<style>
+:root{
+  --bg:#f3f5f2; --surface:#fff; --sunk:#e8ece6; --fg:#16201a; --muted:#5b665e; --line:#d3dad2;
+  --accent:#0b6b43; --accent-fg:#fff; --marking:#e7b416; --danger:#b3261e; --ok-bg:#d6f0e1; --ok-fg:#0b5a38;
+  --warn-bg:#fbefc9; --warn-fg:#7a5300;
+  --display:"Archivo","Arial Narrow",Arial,sans-serif; --body:"Source Sans 3","Segoe UI",Roboto,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#101512; --surface:#18201b; --sunk:#222c25; --fg:#e6ece7; --muted:#9aa79e; --line:#2f3a32;
+  --accent:#3fb97f; --accent-fg:#06200f; --marking:#f0c53c; --danger:#ff8a80; --ok-bg:#15352a; --ok-fg:#7fdcab;
+  --warn-bg:#3a3016; --warn-fg:#f0cf73; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 var(--body);padding:0 16px 56px}
+.wrap{max-width:860px;margin:0 auto;display:grid;gap:18px}
+header{padding:20px 0 10px;border-bottom:4px solid var(--marking);display:grid;gap:4px}
+.eyebrow{font:600 .72rem var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+h1{font:800 clamp(1.4rem,5vw,2rem)/1.15 var(--display);margin:0}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.tabs{display:flex;gap:4px;background:var(--sunk);padding:4px;border-radius:10px}
+.tabs button{border:0;background:transparent;color:var(--fg);font:600 .95rem var(--body);padding:8px 14px;border-radius:7px;cursor:pointer}
+.tabs button.on{background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.gps{font:500 .8rem var(--mono);padding:5px 10px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.gps.ok{background:var(--ok-bg);color:var(--ok-fg)} .gps.bad{background:var(--warn-bg);color:var(--warn-fg)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:22px}
+fieldset{border:0;margin:0;padding:0;display:grid;gap:14px;min-width:0}
+legend{font:600 1.05rem var(--display);margin-bottom:12px;padding:0;display:flex;gap:10px;align-items:center}
+legend .n{font:500 .72rem var(--mono);color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.full{grid-column:1/-1}
+.field{display:grid;gap:5px;min-width:0}
+label,.lbl{font-weight:600;font-size:.92rem}
+.req{color:var(--danger)}
+.hint{font-size:.82rem;color:var(--muted);margin:0}
+input[type=text],input[type=number],input[type=tel],input[type=search],select,textarea{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:46px}
+textarea{min-height:76px;resize:vertical}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.invalid{border-color:var(--danger)!important;background:color-mix(in srgb,var(--danger) 6%,var(--bg))!important}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg label{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:10px 14px;cursor:pointer;background:var(--bg);min-height:46px}
+.seg input{accent-color:var(--accent);margin:0;width:18px;height:18px}
+.seg label:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,var(--bg))}
+.seg.invalid{border-radius:8px;outline:2px solid var(--danger);outline-offset:3px}
+.chain{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+.chain input{font-family:var(--mono)}
+.photos{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(270px,1fr))}
+.pcol{border:1px dashed var(--line);border-radius:10px;padding:14px;display:grid;gap:10px;align-content:start;min-width:0}
+.pcol h3{margin:0;font:600 .98rem var(--display);display:flex;justify-content:space-between}
+.pick{display:flex;gap:8px;flex-wrap:wrap}
+.pick input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;font:600 .95rem var(--body);border-radius:8px;padding:10px 16px;min-height:46px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:.88rem}
+.btn.link{border:0;background:none;color:var(--danger);padding:4px 0;min-height:0;font-size:.85rem}
+.btn:disabled{opacity:.55;cursor:wait}
+.ph{display:grid;grid-template-columns:92px 1fr;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;min-width:0}
+.ph img{width:92px;height:92px;object-fit:cover;border-radius:6px}
+.ph .meta{display:grid;gap:3px;font-size:.82rem;min-width:0}
+.k{font:500 .76rem var(--mono);overflow-wrap:anywhere}
+.ll{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ll input{min-height:36px;padding:5px 8px;font:500 .78rem var(--mono)}
+.tag{justify-self:start;font:500 .68rem var(--mono);padding:1px 6px;border-radius:4px}
+.tag.ok{background:var(--ok-bg);color:var(--ok-fg)} .tag.man{background:var(--warn-bg);color:var(--warn-fg)}
+.tag.miss{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--line);padding-top:16px}
+.msg{font-size:.93rem;flex:1 1 220px}
+.msg.err{color:var(--danger)} .msg.ok{color:var(--accent);font-weight:600}
+.done{background:var(--ok-bg);color:var(--ok-fg);border-radius:10px;padding:16px;display:grid;gap:6px}
+.done .id{font:500 1.1rem var(--mono)}
+.results{display:grid;gap:8px}
+.res{text-align:left;width:100%;display:grid;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;color:var(--fg);font:inherit}
+.res.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--bg))}
+.pill{display:inline-block;font:600 .75rem var(--body);padding:1px 9px;border-radius:999px;background:var(--sunk)}
+.pill.st-Estimate{background:#e3e8ef;color:#3a4a60} .pill.st-Tender{background:var(--warn-bg);color:var(--warn-fg)}
+.pill.st-In-Progress{background:#dce9fb;color:#1f4f8f} .pill.st-Complete{background:var(--ok-bg);color:var(--ok-fg)}
+@media (prefers-color-scheme: dark){.pill.st-Estimate{background:#28313c;color:#b8c6d8}.pill.st-In-Progress{background:#1c2d44;color:#9cc3f5}}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--bg);color:var(--fg);font:600 .85rem var(--body);padding:6px 12px;border-radius:999px;cursor:pointer;min-height:36px}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.res .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.res .meta2{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.summary{background:var(--sunk);border-radius:8px;padding:12px 14px;font-size:.93rem;display:grid;gap:2px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Highways · Construction &amp; Maintenance</div>
+    <h1>Road Maintenance Works</h1>
+    <div class="bar">
+      <div class="tabs">
+        <button type="button" id="tabNew" class="on">New work</button>
+        <button type="button" id="tabUpd">Update a work</button>
+      </div>
+      <span class="gps" id="gps">GPS: starting…</span>
+    </div>
+  </header>
+
+  <!-- ================= NEW WORK ================= -->
+  <form id="fNew" class="card" novalidate>
+    <fieldset>
+      <legend><span class="n">A</span> Jurisdiction</legend>
+      <div class="grid">
+        <div class="field"><label for="region">C&amp;M Region <span class="req">*</span></label><select id="region"><option value="">Select region…</option></select></div>
+        <div class="field"><label for="circle">Circle <span class="req">*</span></label><select id="circle" disabled><option value="">Select region first</option></select></div>
+        <div class="field"><label for="division">Division <span class="req">*</span></label><select id="division" disabled><option value="">Select circle first</option></select></div>
+        <div class="field"><label for="subdivisionSel">Sub-Division <span class="req">*</span></label><select id="subdivisionSel" disabled><option value="">Select division first</option></select>
+          <input type="text" id="subdivision" autocomplete="off" placeholder="Type the sub-division name" aria-label="Sub-Division name" hidden></div>
+        <div class="field"><label for="sectionSel">Section <span class="req">*</span></label><select id="sectionSel" disabled><option value="">Select division first</option></select>
+          <input type="text" id="section" autocomplete="off" placeholder="Type the section name" aria-label="Section name" hidden></div>
+      </div>
+      <p class="hint">Pick each level from the lists. If a Sub-Division or Section is missing, choose "Not in list" and type it. All five are remembered on this phone for the next entry.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="n">B</span> Road and work</legend>
+      <div class="grid">
+        <div class="field full"><label for="road">Name of the Road <span class="req">*</span></label><input type="text" id="road" list="dl-road" autocomplete="off"></div>
+        <div class="field"><span class="lbl" id="lblCls">Classification <span class="req">*</span></span>
+          <div class="seg" id="segCls" role="radiogroup" aria-labelledby="lblCls">
+            <label><input type="radio" name="cls" value="SH"> SH</label>
+            <label><input type="radio" name="cls" value="MDR"> MDR</label>
+            <label><input type="radio" name="cls" value="ODR"> ODR</label>
+          </div>
+        </div>
+        <div class="field"><label for="roadNo">Road No.</label><input type="text" id="roadNo" placeholder="e.g. SH-58" autocomplete="off"></div>
+        <div class="field"><label for="nature">Nature of work <span class="req">*</span></label>
+          <select id="nature">
+            <option value="">Select…</option>
+            <option>Periodical Renewal</option>
+            <option>Special Repairs</option>
+            <option>Urgent Repairs</option>
+            <option>Potholes/ Patches</option>
+            <option>High Berm Cutting</option>
+            <option>Low Berm Filling</option>
+            <option>Desilting Drain</option>
+            <option>Desilting Silt Catchpit</option>
+            <option>Vent clearance of Cross Drainage Structures</option>
+            <option>Jungle Clearance</option>
+            <option>Repairs to CD Structures</option>
+            <option>Median and Kerb Painting</option>
+            <option>Removal of Silt on the Carriageway</option>
+            <option>Others</option>
+          </select>
+        </div>
+        <div class="field" id="otherBox" hidden><label for="natureOther">Describe the work <span class="req">*</span></label><input type="text" id="natureOther"></div>
+        <div class="field full"><span class="lbl">Stretch (chainage) <span class="req">*</span></span>
+          <div class="chain">
+            <input type="number" id="fromKm" step="0.001" min="0" inputmode="decimal" placeholder="From km" aria-label="From km">
+            <span class="hint">to</span>
+            <input type="number" id="toKm" step="0.001" min="0" inputmode="decimal" placeholder="To km" aria-label="To km">
+          </div>
+          <p class="hint">Write km/m as decimal km: 12/400 is 12.400. <span id="len"></span></p>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="n">C</span> Status of work</legend>
+      <div class="seg" id="segStatus" role="radiogroup" aria-label="Status of work">
+        <label><input type="radio" name="status" value="Estimate"> Estimate</label>
+        <label><input type="radio" name="status" value="Tender"> Tender</label>
+        <label><input type="radio" name="status" value="In Progress"> In Progress</label>
+        <label><input type="radio" name="status" value="Complete"> Complete</label>
+      </div>
+      <div class="field"><label for="remarks">Remarks</label><textarea id="remarks" placeholder="Estimate amount, agency, dates…"></textarea></div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="n">D</span> Photographs</legend>
+      <p class="hint">Each photo is stamped with date, time and GPS position. Allow location when the browser asks, and take photos standing at the work site.</p>
+      <div class="photos">
+        <div class="pcol" data-box="newBefore" data-phase="Before" data-title="Prior to repair"></div>
+        <div class="pcol" data-box="newAfter" data-phase="After" data-title="After repair"></div>
+      </div>
+      <p class="hint">At least one prior-to-repair photo is needed; after-repair photos are needed when the status is Complete.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="n">E</span> Entered by</legend>
+      <div class="grid">
+        <div class="field"><label for="enteredBy">Name &amp; designation <span class="req">*</span></label><input type="text" id="enteredBy" placeholder="e.g. R. Kumar, AE" autocomplete="name"></div>
+        <div class="field"><label for="mobile">Mobile No.</label><input type="tel" id="mobile" inputmode="numeric" maxlength="10" autocomplete="tel"></div>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button type="submit" class="btn primary" id="saveNew">Submit work</button>
+      <button type="button" class="btn" id="clearNew">Clear form</button>
+      <span class="msg" id="msgNew" role="status" aria-live="polite"></span>
+    </div>
+  </form>
+
+  <!-- ================= UPDATE ================= -->
+  <form id="fUpd" class="card" novalidate hidden>
+    <fieldset>
+      <legend><span class="n">1</span> Works captured</legend>
+      <div class="chips" id="statusChips" role="group" aria-label="Filter by status">
+        <button type="button" class="chip on" data-st="">All</button>
+        <button type="button" class="chip" data-st="Estimate">Estimate</button>
+        <button type="button" class="chip" data-st="Tender">Tender</button>
+        <button type="button" class="chip" data-st="In Progress">In Progress</button>
+        <button type="button" class="chip" data-st="Complete">Complete</button>
+      </div>
+      <div class="bar" style="flex-wrap:nowrap">
+        <input type="search" id="q" placeholder="Search road, section, division, Work ID…" aria-label="Search">
+        <button type="button" class="btn" id="findBtn">Search</button>
+      </div>
+      <div class="bar"><span class="hint" id="listInfo"></span><button type="button" class="btn sm" id="refreshBtn">Refresh</button></div>
+      <p class="msg ok" id="msgUpdDone" hidden></p>
+      <div class="results" id="results"><p class="hint">Loading works…</p></div>
+    </fieldset>
+
+    <div id="updBody" hidden style="display:grid;gap:22px">
+      <div class="summary" id="updSummary"></div>
+      <fieldset>
+        <legend><span class="n">2</span> New status</legend>
+        <div class="seg" id="segUStatus" role="radiogroup" aria-label="Status of work">
+          <label><input type="radio" name="ustatus" value="Estimate"> Estimate</label>
+          <label><input type="radio" name="ustatus" value="Tender"> Tender</label>
+          <label><input type="radio" name="ustatus" value="In Progress"> In Progress</label>
+          <label><input type="radio" name="ustatus" value="Complete"> Complete</label>
+        </div>
+        <div class="field"><label for="uremarks">Remarks</label><textarea id="uremarks"></textarea></div>
+      </fieldset>
+      <fieldset>
+        <legend><span class="n">3</span> Add photographs</legend>
+        <div class="photos">
+          <div class="pcol" data-box="updBefore" data-phase="Before" data-title="Prior to repair"></div>
+          <div class="pcol" data-box="updAfter" data-phase="After" data-title="After repair"></div>
+        </div>
+      </fieldset>
+      <div class="actions">
+        <button type="submit" class="btn primary" id="saveUpd">Save update</button>
+        <span class="msg" id="msgUpd" role="status" aria-live="polite"></span>
+      </div>
+    </div>
+  </form>
+</div>
+
+<datalist id="dl-region"></datalist><datalist id="dl-circle"></datalist><datalist id="dl-division"></datalist>
+<datalist id="dl-subdivision"></datalist><datalist id="dl-section"></datalist><datalist id="dl-road"></datalist>
+
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  /* ====== SETTING: when this page is hosted outside Apps Script (e.g. GitHub Pages),
+     paste your Apps Script Web app URL (ending in /exec) between the quotes. ====== */
+  var API_URL = '';
+
+  var IN_APPS_SCRIPT = !!(window.google && google.script && google.script.run);
+  var run = function (fn, arg) {
+    if (IN_APPS_SCRIPT) {
+      return new Promise(function (res, rej) { google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](arg); });
+    }
+    if (!API_URL) return Promise.reject(new Error('The app is not linked to the Google Sheet yet (API_URL is empty).'));
+    return fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, arg: arg === undefined ? null : arg }) })
+      .then(function (r) { if (!r.ok) throw new Error('Server error ' + r.status + '.'); return r.json(); })
+      .then(function (j) { if (!j.ok) throw new Error(j.error || 'Request failed.'); return j.result; },
+            function (e) { throw new Error(e && e.message && /fetch|network/i.test(e.message) ? 'No internet connection.' : (e && e.message) || 'Request failed.'); });
+  };
+  if (!IN_APPS_SCRIPT && 'serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+  var LEVELS = ['region', 'circle', 'division', 'subdivision', 'section'];
+
+  /* ---------- C&M jurisdiction: Region → Circle → Division ---------- */
+  var JURIS = {
+    'Chennai': {
+      'Chennai': ['City Roads-1', 'City Roads-2', 'Chengalpattu'],
+      'Kancheepuram': ['Kancheepuram', 'Tiruvallur', 'Gummidipoondi'],
+      'Tiruvannamalai': ['Tiruvannamalai', 'Polur', 'Cheyyar', 'Kallakurichi', 'Ulundurpet'],
+      'Vellore': ['Vellore', 'Ranipet', 'Tirupathur'],
+      'Villupuram': ['Villupuram', 'Tindivanam', 'Cuddalore', 'Virudhachalam']
+    },
+    'Trichy': {
+      'Trichy': ['Trichy', 'Viralimalai', 'Karur', 'Pudukkottai'],
+      'Thanjavur': ['Thanjavur', 'Kumbakonam', 'Pattukkottai', 'Aranthangi'],
+      'Perambalur': ['Perambalur', 'Ariyalur', 'Thuraiyur'],
+      'Tiruvarur': ['Tiruvarur', 'Mayiladuthurai', 'Nagapattinam']
+    },
+    'Coimbatore': {
+      'Coimbatore': ['Coimbatore-1', 'Coimbatore-2', 'Pollachi', 'Ooty'],
+      'Dharmapuri': ['Dharmapuri', 'Palacode', 'Krishnagiri', 'Hosur'],
+      'Salem': ['Salem', 'Edappadi', 'Namakkal'],
+      'Erode': ['Erode', 'Tiruchengode', 'Bhavani', 'Gobi'],
+      'Tiruppur': ['Tiruppur', 'Kangeyam', 'Dharapuram']
+    },
+    'Madurai': {
+      'Madurai': ['Madurai-1', 'Madurai-2', 'Sivagangai', 'Karaikudi'],
+      'Dindigul': ['Dindigul', 'Palani', 'Oddanchathiram', 'Theni'],
+      'Ramanathapuram': ['Ramanathapuram', 'Paramakudi', 'Kovilpatti'],
+      'Virudhunagar': ['Virudhunagar', 'Rajapalayam', 'Tenkasi'],
+      'Tirunelveli': ['Tirunelveli', 'Radhapuram', 'Nagercoil', 'Thoothukudi']
+    }
+  };
+  function opts(sel, items, placeholder, value) {
+    sel.innerHTML = '<option value="">' + esc(placeholder) + '</option>' +
+      items.map(function (v) { return '<option value="' + esc(v) + '">' + esc(v) + '</option>'; }).join('');
+    sel.disabled = !items.length;
+    sel.value = items.indexOf(value) >= 0 ? value : '';
+  }
+  /* Sub-Divisions and Sections under each Division (from Subdiv_and_Sections.xlsx) */
+  var SUBSEC = {"City Roads-1":{"sub":["Chennai City Roads","Tambaram","Velachery"],"sec":["Chennai City roads Sec - 1","Chennai City roads Sec - 2","Chennai City roads Sec - 3","Chennai City roads Sec - 4","Chennai City roads Sec - 5","Chennai City roads Sec - 6","Chennai City roads Sec - 7"]},
+    "City Roads-2":{"sub":["City Roads 2","Avadi"],"sec":["Chennai City roads Sec - 8","Chennai City roads Sec - 9","Chennai City roads Sec - 10","Chennai City roads Sec - 11","Chennai City roads Sec - 12","Chennai City roads Sec - 13","Avadi","Poonamallee"]},
+    "Chengalpattu":{"sub":["Chengalpattu","Madurantakam"],"sec":["Chengalpattu","Thiruporur","Thirukalukundram","Vandalur - 1","Vandalur - 2","Singaperumalkoil - 1","Singaperumalkoil - 2","Madurantakam","Acharapakkam","Melmaruvathur - 1","Melmaruvathur - 2","Cheyyur - 1","Cheyyur - 2"]},
+    "Kancheepuram":{"sub":["Kancheepuram","Sriperumbudur","Uthiramerur"],"sec":["Kanchipuram","Walajabad - 1","Walajabad - 2","Sriperumbudur - 1","Sriperumbudur - 2","Kundrathur - 1","Kundrathur - 2","Uthiramerur"]},
+    "Tiruvallur":{"sub":["Tiruvallur","Ambattur","Gummidipoondi","Pallipet","Ponneri","Tiruttani"],"sec":["Thiruvallur East","Thiruvallur West","Kadambathur - 1","Kadambathur - 2","Tiruthani","Pallipattu"]},
+    "Gummidipoondi":{"sub":["Tiruvallur","Ambattur","Gummidipoondi","Pallipet","Ponneri","Tiruttani"],"sec":["Gummidipoondi","Ponneri","Uthukottai - 1","Uthukottai - 2"]},
+    "Tiruvannamalai":{"sub":["Tiruvannamalai","Kilpennathur","Chengam","Polur","Thandrampattu"],"sec":["Tiruvannamalai North","Tiruvannamalai South","Thurinjapuram","Thandarampattu","Chengam - 1","Chengam - 2","Keezhpennathur"]},
+    "Polur":{"sub":["Tiruvannamalai","Kilpennathur","Chengam","Polur","Thandrampattu"],"sec":["Polur","Kalasapakkam","Chetpet - 1","Chetpet - 2","Arani - 1","Arani - 2"]},
+    "Cheyyar":{"sub":["Cheyyar","Arni","Vandavasi"],"sec":["Cheyyar","Vembakkam","Anakkavoor - 1","Anakkavoor - 2","Vandavasi","Peranamallur","Thellar - 1","Thellar - 2","Thellar - 3"]},
+    "Kallakurichi":{"sub":["Kallakurichi","Sankarapuram","Tirukovilur","Ulundurpet"],"sec":["Kallakurichi","Chinnasalem","Kalvarayanmalai - 1","Kalvarayanmalai - 2","Sankarapuram - 1","Sankarapuram - 2"]},
+    "Ulundurpet":{"sub":["Kallakurichi","Sankarapuram","Tirukovilur","Ulundurpet"],"sec":["Ulundurpet","Kalvarayanmalai","Rishivandhiyam - 1","Rishivandhiyam - 2"]},
+    "Vellore":{"sub":["Vellore","Katpadi","Gudiyatham"],"sec":["Vellore","Anaicut","Katpadi - 1","Katpadi - 2","Gudiyatham"]},
+    "Ranipet":{"sub":["Arakkonam","Arcot","Walajahpet"],"sec":["Arakonam West","Arakonam East","Sholinghur","Arcot","Kalavai","Walajah"]},
+    "Tirupathur":{"sub":["Tirupathur","Vaniyambadi"],"sec":["Thirupathur","Vaniyambadi","Ambur - 1","Ambur - 2","Ambur - 3","Yelagiri"]},
+    "Villupuram":{"sub":["Villupuram","Gingee","Tindivanam","Vanur"],"sec":["Villupuram - 1","Villupuram - 2","Villupuram - 3","Vikiranvandi - 1","Vikiranvandi - 2","Koliyanur - 1","Koliyanur - 2","Vanur"]},
+    "Tindivanam":{"sub":["Villupuram","Gingee","Tindivanam","Vanur"],"sec":["Tindivanam South","Tindivanam North","Gingee","Valathy","Melmalaiyanur - 1","Melmalaiyanur - 2","Vallam - 1","Vallam - 2","Olakkur - 1","Olakkur - 2"]},
+    "Cuddalore":{"sub":["Cuddalore","Chidambaram","Kurinchipadi","Kattumannarkoil","Panruti"],"sec":["Cuddalore - 1","Cuddalore - 2","Chidambaram","Kurinjipadi","Portnova","Vadalur","Kattumannarkoil - 1","Kattumannarkoil - 2"]},
+    "Virudhachalam":{"sub":["Virudhachalam","Panruti","Tittagudi"],"sec":["Virudhachalam - 1","Virudhachalam - 2","Panruti - 1","Panruti - 2","Thittakudi - 1","Thittakudi - 2","Nallur - 1","Nallur - 2"]},
+    "Trichy":{"sub":["Tiruchirappalli","Lalgudi","Manapparai","Musiri","Thuraiyur"],"sec":["Trichy East","Trichy West","Srirangam I","Srirangam II","Lalgudi","Manachanallur","Thiruverumbur I","Thiruverumbur II","Thiruverumbur III","Manapparai","Marungapuri"]},
+    "Viralimalai":{"sub":["Tiruchirappalli","Lalgudi","Manapparai","Musiri","Thuraiyur"],"sec":["Viralimalai","Illuppur","Keeranur I","Keeranur II","Kudimiyanmalai","Ponnamaravathi I","Ponnamaravathi II","Ponnamaravathi III"]},
+    "Karur":{"sub":["Karur","Aravakurichi","Krishnarayapuram","Kulithalai"],"sec":["Karur East","Karur West","Pugalur I","Pugalur II","Pugalur III","Aravakurichy","Krishnarayapuram","Tharangampadi","Mayanur I","Mayanur II","Kulithalai"]},
+    "Pudukkottai":{"sub":["Pudukottai","Alangudi","Aranthangi","Thirumayam","Keeranur","Avudaiyarkoil"],"sec":["Pudukottai East","Gandharvakottai","Pudukottai West","Kulathur I","Kulathur II","Kulathur III","Thirumayam I","Thirumayam II"]},
+    "Thanjavur":{"sub":["Thanjavur","Kumbakonam","Orathanadu","Papanasam","Pattukottai","Peravoorani","Thiruvidaimaruthur","Thiruvaiyaru"],"sec":["Thanjavur I","Thanjavur II","Orathanadu I","Orathanadu II","Orathanadu III","Thiruvaiyaru","Thirukkattupalli","Budalur I","Budalur II"]},
+    "Kumbakonam":{"sub":["Kumbakonam","Papanasam","Thiruvidaimaruthur","Thiruvaiyaru"],"sec":["Kumbakonam South","Kumbakonam North","Papanasam I","Papanasam II","Thiruvidaimaruthur"]},
+    "Pattukkottai":{"sub":["Kumbakonam","Papanasam","Thiruvidaimaruthur","Thiruvaiyaru"],"sec":["Pattukottai I","Pattukottai II","Thiruvonam I","Thiruvonam II","Adiramapattinam","Peravurani I","Peravurani II"]},
+    "Aranthangi":{"sub":["Pudukottai","Alangudi","Aranthangi","Thirumayam","Keeranur","Avudaiyarkoil"],"sec":["Aranthangi I","Aranthangi II","Alangudi I","Alangudi II","Karambakudi","Avudaiyarkoil I","Avudaiyarkoil II","Manamelkudi"]},
+    "Perambalur":{"sub":["Perambalur","Kunnam","Veppanthattai"],"sec":["Perambalur I","Perambalur II","Kunnam I","Kunnam II","Veppanthattai I","Veppanthattai II"]},
+    "Ariyalur":{"sub":["Ariyalur","Sendurai","Jayankondam"],"sec":["Ariyalur I","Ariyalur II","Thirumanur I","Thirumanur II","Thirumanur III","Sendurai"]},
+    "Thuraiyur":{"sub":["Tiruchirappalli","Lalgudi","Manapparai","Musiri","Thuraiyur"],"sec":["Thuraiyur I","Thuraiyur II","Musiri I","Musiri II","Thottiyam I","Thottiyam II","Uppiliyapuram I","Uppiliyapuram II"]},
+    "Tiruvarur":{"sub":["Thiruvarur","Kudavasal","Mannargudi","Nannilam","Thiruthuraipoondi"],"sec":["Thiruvarur","Kodavasal","Valangaiman","Mannargudi","Needamangalam","Koradachery I","Koradachery II","Koradachery III","Nannilam","Thiruthuraipoondi"]},
+    "Mayiladuthurai":{"sub":["Mayiladuthurai","Sirkazhi","Sembanarkoil"],"sec":["Mayiladuthurai-1","Mayiladuthurai-2","Sirkali-1","Sirkali-2","Sembanarkoil"]},
+    "Nagapattinam":{"sub":["Nagapattinam","Vedaranyam","Thirukuvalai"],"sec":["Nagapattinam","Keelvelur","Vedaranyam","Thirukuvalai"]},
+    "Coimbatore-1":{"sub":["Coimbatore(North)","Coimbatore(South)","Mettupalayam","Sulur","Annur","Coimbatore Special"],"sec":["Section - 1","Section - 2","Mettupalayam"]},
+    "Coimbatore-2":{"sub":["Coimbatore(North)","Coimbatore(South)","Mettupalayam","Sulur","Annur","Coimbatore Special"],"sec":["Section - 1","Section - 2"]},
+    "Pollachi":{"sub":["Pollachi","Kinathukadavu","Anaimalai","Valparai"],"sec":["Pollachi","Thirupathur Sec - 1","Thirupathur Sec - 2","Anamalai","Valparai"]},
+    "Ooty":{"sub":["Udhagamandalam","Coonoor","Gudalur","Kotagiri"],"sec":["Udhagamandalam","Kudagu","Kethi","Pandalur","Kunnur","Gudalur","Kothagiri"]},
+    "Dharmapuri":{"sub":["Dharmapuri","Harur","Pappireddipatti","Palacode","Pennagaram"],"sec":["Dharmapuri East","Dharmapuri West","Section - 1","Section - 2","Arur","Morappur","Pappireddipatti"]},
+    "Palacode":{"sub":["Dharmapuri","Harur","Pappireddipatti","Palacode","Pennagaram"],"sec":["Palacode","Section - 1","Section - 2","Section - 3","Pennagaram"]},
+    "Krishnagiri":{"sub":["Krishnagiri","Denkanikottai","Hosur","Uthangarai"],"sec":["Krishnagiri","Kaveripattinam","Uthankarai","Mathur","Section - 1","Section - 2","Pochampalli"]},
+    "Hosur":{"sub":["Krishnagiri","Denkanikottai","Hosur","Uthangarai"],"sec":["Hosur","Denkanikottai","Rayakottai","Section - 1","Section - 2"]},
+    "Salem":{"sub":["Salem","Yercaud","Attur","Vazhappadi"],"sec":["Section - 1","Section - 2","Yercaud","Attur East","Attur West","Vazhapadi","Pethanayakkanpalayam"]},
+    "Edappadi":{"sub":["Edappady","Mettur","Omalur","Sangagiri"],"sec":["Edappadi","Omalur","Mecheri","Sankagiri","Mettur","Section - 1","Section - 2"]},
+    "Namakkal":{"sub":["Namakkal","Rasipuram","Thiruchengode","Senthamangalam"],"sec":["Section - 1","Section - 2","Rasipuram","Semmedu - 1","Semmedu - 2"]},
+    "Erode":{"sub":["Erode","Bhavani","Perunthurai","Kodumudi"],"sec":["Section - 1","Section - 2","Kodumudi","Perundurai","Section - 3"]},
+    "Tiruchengode":{"sub":["Namakkal","Rasipuram","Thiruchengode","Senthamangalam"],"sec":["Thiruchengode","Pallipalayam","Section - 1","Section - 2","Section - 3"]},
+    "Bhavani":{"sub":["Erode","Bhavani","Perunthurai","Kodumudi"],"sec":["Bhavani","Anthiyur","Sathiyamangalam","Section - 1","Section - 2"]},
+    "Gobi":{"sub":["Gobichettipalayam","Sathiyamangalam","Thalavadi","Nambiyur"],"sec":["Gobi","Goundapadi","Section - 1","Section - 2","Nambiyur","Thalavadi","Bhavani"]},
+    "Tiruppur":{"sub":["Tiruppur North","Tiruppur South","Avinasi","Kangeyam","Palladam"],"sec":["Tiruppur North - 1","Tiruppur North - 2","Section - 1","Section - 2","Section - 3","Tiruppur South","Avinashi","Palladam"]},
+    "Kangeyam":{"sub":["Tiruppur North","Tiruppur South","Avinasi","Kangeyam","Palladam"],"sec":["Kangeyam","Mulanur","Vellakovil"]},
+    "Dharapuram":{"sub":["Dharapuram","Udumalaipettai","Madathukulam","Mulanur","Vellakoil"],"sec":["Dharapuram","Section - 1","Section - 2","Section - 3","Udumalaipettai","Madathukulam"]},
+    "Madurai-1":{"sub":["Madurai","Madurai West","Melur","Peraiyur","Thirumangalam","Usilampatti","Vadipatti"],"sec":["Section - 1","Section - 2","Section - 3","Section - 4","Section - 5","Melur","Vadipatti"]},
+    "Madurai-2":{"sub":["Madurai","Madurai West","Melur","Peraiyur","Thirumangalam","Usilampatti","Vadipatti"],"sec":["Theni","Thirumangalam","Usilampatti"]},
+    "Sivagangai":{"sub":["Sivagangai","Devakottai","Karaikudi","Manamadurai","Thirupathur"],"sec":["Section - 1","Section - 2","Manamadurai","Section - 3"]},
+    "Karaikudi":{"sub":["Sivagangai","Devakottai","Karaikudi","Manamadurai","Thirupathur"],"sec":["Karaikudi","Devakotaai","Thirupathur","Singampunari","Section - 1","Section - 2"]},
+    "Dindigul":{"sub":["Dindugal","Athoor","Kodaikanal","Natham","Vathalakundu"],"sec":["Dindigul","Natham","Vathalagundu","Athoor"]},
+    "Palani":{"sub":["Palani","Vedasandur","Oddanchatram"],"sec":["Palani","Section - 1","Section - 2","Section - 3","Section - 4","Kodaikanal","Perumalmalai"]},
+    "Oddanchathiram":{"sub":["Palani","Vedasandur","Oddanchatram"],"sec":["Section - 1","Section - 2","Vedasanthur","Vadamadurai","Section - 3"]},
+    "Theni":{"sub":["Theni","Andipatti","Bodi","Periyakulam","Uthamapalayam"],"sec":["Theni","Andipatti","Bodinayakanur","Uthamapalayam"]},
+    "Ramanathapuram":{"sub":["Ramanathapuram","Kamuthi","Mudukulathur","Paramakudi","Thiruvadanai"],"sec":["Ramnad","Thiruvadanai","Section - 1","Section - 2","Section - 3","Section - 4"]},
+    "Paramakudi":{"sub":["Ramanathapuram","Kamuthi","Mudukulathur","Paramakudi","Thiruvadanai"],"sec":["Palayamkottai","Section - 1","Section - 2","Section - 3"]},
+    "Kovilpatti":{"sub":["Thoothukudi","Kovilpatti","Ottapidaram","Sathankulam","Thiruvaikundam","Thiruchendur","Villathikulam"],"sec":["Section - 1","Section - 2","Ettayapuram"]},
+    "Virudhunagar":{"sub":["Virudhunagar","Aruppukottai","Rajapalayam","Sattur","Sivakasi","Srivilliputhur","Thiruchuzhi"],"sec":["Virudhunagar","Thiruchuli","Aruppukottai","Kariyapatti","Section - 1","Section - 3","Section - 4"]},
+    "Rajapalayam":{"sub":["Virudhunagar","Aruppukottai","Rajapalayam","Sattur","Sivakasi","Srivilliputhur","Thiruchuzhi"],"sec":["Rajapalayam","Srivilliputhur","Sivakasi","Saathur"]},
+    "Tenkasi":{"sub":["Tenkasi","Sankarankoil","Senkottai","Sivagiri"],"sec":["Thenkasi North","Thenkasi South","Senkottai","Sankarankoil","Sivakiri","Section - 1","Section - 2","Section - 3"]},
+    "Tirunelveli":{"sub":["Palayamkottai","Radhapuram","Ambasamudram","Nanguneri"],"sec":["Section - 1","Section - 2","Palayamkottai","Alangulam"]},
+    "Radhapuram":{"sub":["Palayamkottai","Radhapuram","Ambasamudram","Nanguneri"],"sec":["Section - 1","Section - 2","Valliyur","Nanguneri"]},
+    "Nagercoil":{"sub":["Nagerkovil","Thakkalai","Thovalai","Kuzhithurai"],"sec":["Nagercoil","Thovalai","Kuzhithurai","Thuckalay","Section - 1","Section - 2"]},
+    "Thoothukudi":{"sub":["Thoothukudi","Kovilpatti","Ottapidaram","Sathankulam","Thiruvaikundam","Thiruchendur","Villathikulam"],"sec":["Thoothukudi","Section - 1","Section - 2"]}};
+  var OTHER = '__other__';
+  /* Fill a list that also offers "Not in list"; the typed value lives in the text input #id */
+  function optsOther(id, items, placeholder, value) {
+    var sel = $('#' + id + 'Sel'), inp = $('#' + id);
+    sel.innerHTML = '<option value="">' + esc(placeholder) + '</option>' +
+      items.map(function (v) { return '<option value="' + esc(v) + '">' + esc(v) + '</option>'; }).join('') +
+      (items.length ? '<option value="' + OTHER + '">Not in list – type it</option>' : '');
+    sel.disabled = !items.length;
+    value = value || '';
+    if (items.indexOf(value) >= 0) { sel.value = value; inp.value = value; inp.hidden = true; }
+    else if (value && items.length) { sel.value = OTHER; inp.value = value; inp.hidden = false; }
+    else { sel.value = ''; inp.value = ''; inp.hidden = true; }
+  }
+  function setJuris(region, circle, division, subdivision, section) {
+    opts($('#region'), Object.keys(JURIS), 'Select region…', region);
+    var r = JURIS[$('#region').value];
+    opts($('#circle'), r ? Object.keys(r) : [], r ? 'Select circle…' : 'Select region first', circle);
+    var c = r && r[$('#circle').value];
+    opts($('#division'), c || [], c ? 'Select division…' : 'Select circle first', division);
+    var s = SUBSEC[$('#division').value] || { sub: [], sec: [] };
+    var hasDiv = !!$('#division').value;
+    optsOther('subdivision', s.sub, hasDiv ? 'Select sub-division…' : 'Select division first', subdivision);
+    optsOther('section', s.sec, hasDiv ? 'Select section…' : 'Select division first', section);
+  }
+  setJuris();
+  $('#region').addEventListener('change', function () { setJuris($('#region').value); });
+  $('#circle').addEventListener('change', function () { setJuris($('#region').value, $('#circle').value); });
+  $('#division').addEventListener('change', function () { setJuris($('#region').value, $('#circle').value, $('#division').value); });
+  ['subdivision', 'section'].forEach(function (id) {
+    var sel = $('#' + id + 'Sel'), inp = $('#' + id);
+    sel.addEventListener('change', function () {
+      sel.classList.remove('invalid');
+      if (sel.value === OTHER) { inp.value = ''; inp.hidden = false; inp.focus(); }
+      else { inp.value = sel.value; inp.hidden = true; }
+      inp.dispatchEvent(new Event('change'));
+    });
+  });
+  var FRESH_MS = 15 * 60 * 1000;
+  var lists = { hier: [], roads: [] };
+  var stores = { newBefore: [], newAfter: [], updBefore: [], updAfter: [] };
+  var selected = null;
+
+  /* ---------- local memory (jurisdiction + name) ---------- */
+  function remember() {
+    try { var o = {}; LEVELS.concat(['enteredBy', 'mobile']).forEach(function (k) { o[k] = $('#' + k).value; }); localStorage.setItem('mw-defaults', JSON.stringify(o)); } catch (e) {}
+  }
+  function recall() {
+    try {
+      var o = JSON.parse(localStorage.getItem('mw-defaults') || '{}');
+      setJuris(o.region, o.circle, o.division, o.subdivision, o.section);
+      ['enteredBy', 'mobile'].forEach(function (k) { $('#' + k).value = o[k] || ''; });
+    } catch (e) {}
+  }
+
+  /* ---------- tabs ---------- */
+  function tab(which) {
+    $('#tabNew').classList.toggle('on', which === 'new');
+    $('#tabUpd').classList.toggle('on', which === 'upd');
+    $('#fNew').hidden = which !== 'new'; $('#fUpd').hidden = which !== 'upd';
+  }
+  $('#tabNew').onclick = function () { tab('new'); };
+  $('#tabUpd').onclick = function () { tab('upd'); if (!listLoaded) search(); };
+
+  /* ---------- live GPS ---------- */
+  var fix = null;
+  function setGps(text, cls) { var g = $('#gps'); g.textContent = text; g.className = 'gps ' + (cls || ''); }
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(function (p) {
+      fix = { lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy), at: Date.now() };
+      setGps('GPS on · ±' + fix.acc + ' m', fix.acc <= 50 ? 'ok' : 'bad');
+    }, function (e) {
+      setGps(e.code === 1 ? 'GPS blocked – allow location' : 'GPS unavailable', 'bad');
+    }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 });
+  } else { setGps('GPS not supported', 'bad'); }
+  function freshFix() { return fix && Date.now() - fix.at < 2 * 60 * 1000 ? fix : null; }
+
+  /* ---------- suggestions ---------- */
+  function fillLists() {
+    var val = function (id) { return $('#' + id).value.trim().toLowerCase(); };
+    LEVELS.forEach(function (lvl, i) {
+      var set = {};
+      lists.hier.forEach(function (r) {
+        for (var j = 0; j < i; j++) { if (val(LEVELS[j]) && String(r[j]).toLowerCase() !== val(LEVELS[j])) return; }
+        if (r[i]) set[r[i]] = 1;
+      });
+      $('#dl-' + lvl).innerHTML = Object.keys(set).sort().map(function (v) { return '<option value="' + esc(v) + '">'; }).join('');
+    });
+    var rs = {};
+    lists.roads.forEach(function (r) { if (!val('section') || String(r.section).toLowerCase() === val('section')) rs[r.road] = 1; });
+    $('#dl-road').innerHTML = Object.keys(rs).sort().map(function (v) { return '<option value="' + esc(v) + '">'; }).join('');
+  }
+  LEVELS.forEach(function (l) { $('#' + l).addEventListener('change', fillLists); });
+  $('#road').addEventListener('change', function () {
+    var r = lists.roads.filter(function (x) { return x.road === $('#road').value; })[0];
+    if (!r) return;
+    if (!$('#roadNo').value && r.roadNo) $('#roadNo').value = r.roadNo;
+    var c = document.querySelector('input[name=cls][value="' + r.cls + '"]'); if (c && !document.querySelector('input[name=cls]:checked')) c.checked = true;
+  });
+  function loadLists() { run('getLists').then(function (l) { lists = l || lists; fillLists(); }).catch(function () {}); }
+
+  $('#nature').onchange = function () { $('#otherBox').hidden = $('#nature').value !== 'Others'; };
+  function updLen() {
+    var a = parseFloat($('#fromKm').value), b = parseFloat($('#toKm').value);
+    $('#len').textContent = isFinite(a) && isFinite(b) && b >= a ? 'Length: ' + (b - a).toFixed(3) + ' km' : '';
+  }
+  $('#fromKm').oninput = $('#toKm').oninput = updLen;
+
+  /* ---------- photo boxes ---------- */
+  function fmtTime(d) {
+    return new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  }
+  function hasGps(p) { var a = parseFloat(p.lat), b = parseFloat(p.lng); return isFinite(a) && isFinite(b) && !(a === 0 && b === 0); }
+
+  document.querySelectorAll('.pcol').forEach(function (col) {
+    var key = col.dataset.box;
+    col.innerHTML = '<h3>' + esc(col.dataset.title) + ' <span class="hint" data-cnt></span></h3>' +
+      '<div class="pick"><label class="btn sm primary" for="cam-' + key + '">Take photo</label><input type="file" id="cam-' + key + '" accept="image/*" capture="environment">' +
+      '<label class="btn sm" for="gal-' + key + '">From gallery</label><input type="file" id="gal-' + key + '" accept="image/*" multiple></div>' +
+      '<div data-list style="display:grid;gap:8px"></div>';
+    ['cam-', 'gal-'].forEach(function (pre) {
+      var inp = document.getElementById(pre + key);
+      inp.addEventListener('change', function () { addFiles(key, Array.prototype.slice.call(inp.files)); inp.value = ''; });
+    });
+    col.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-rm]'); if (!b) return;
+      stores[key] = stores[key].filter(function (p) { return p.key !== b.dataset.rm; }); renderBox(key);
+    });
+    col.addEventListener('input', function (e) {
+      var t = e.target.closest('[data-ll]'); if (!t) return;
+      var parts = t.dataset.ll.split(':');
+      stores[key].forEach(function (p) { if (p.key === parts[0]) p[parts[1]] = t.value; });
+    });
+    renderBox(key);
+  });
+
+  function addFiles(key, files) {
+    var now = Date.now();
+    var liveAtPick = freshFix();
+    return files.reduce(function (chain, file) {
+      return chain.then(function () {
+        var parse = window.exifr ? exifr.parse(file, { gps: true, pick: ['DateTimeOriginal', 'CreateDate', 'latitude', 'longitude', 'GPSLatitude', 'GPSLongitude', 'GPSLatitudeRef', 'GPSLongitudeRef'] }).catch(function () { return null; }) : Promise.resolve(null);
+        return parse.then(function (ex) {
+          var t = ex && (ex.DateTimeOriginal || ex.CreateDate);
+          var takenAt = t instanceof Date && !isNaN(t) ? t : new Date(file.lastModified || now);
+          var p = { key: Math.random().toString(36).slice(2), file: file, preview: URL.createObjectURL(file), takenAt: takenAt, lat: '', lng: '', acc: '', source: '' };
+          if (ex && isFinite(ex.latitude) && isFinite(ex.longitude) && !(ex.latitude === 0 && ex.longitude === 0)) {
+            p.lat = ex.latitude; p.lng = ex.longitude; p.source = 'Photo GPS (EXIF)';
+          } else if (liveAtPick && Math.abs(now - takenAt.getTime()) < FRESH_MS) {
+            p.lat = liveAtPick.lat; p.lng = liveAtPick.lng; p.acc = liveAtPick.acc; p.source = 'Device GPS at capture';
+          } else {
+            p.source = 'Entered manually';
+          }
+          stores[key].push(p);
+          renderBox(key);
+        });
+      });
+    }, Promise.resolve());
+  }
+
+  function renderBox(key) {
+    var col = document.querySelector('[data-box="' + key + '"]');
+    var list = stores[key];
+    col.querySelector('[data-cnt]').textContent = list.length ? list.length + ' photo' + (list.length > 1 ? 's' : '') : '';
+    col.querySelector('[data-list]').innerHTML = list.length ? list.map(function (p) {
+      var manual = p.source === 'Entered manually';
+      var tag = !manual ? '<span class="tag ok">' + esc(p.source.toUpperCase()) + '</span>' : hasGps(p) ? '<span class="tag man">GPS ENTERED BY HAND</span>' : '<span class="tag miss">NO GPS – ENTER BELOW</span>';
+      var ll = manual
+        ? '<div class="ll"><input type="number" step="any" inputmode="decimal" placeholder="Latitude" aria-label="Latitude" data-ll="' + p.key + ':lat" value="' + esc(p.lat) + '"><input type="number" step="any" inputmode="decimal" placeholder="Longitude" aria-label="Longitude" data-ll="' + p.key + ':lng" value="' + esc(p.lng) + '"></div>'
+        : '<span class="k">' + Number(p.lat).toFixed(6) + ', ' + Number(p.lng).toFixed(6) + (p.acc ? ' (±' + p.acc + ' m)' : '') + '</span>';
+      return '<div class="ph"><img src="' + p.preview + '" alt="Photo preview"><div class="meta">' + tag +
+        '<span class="k">' + esc(fmtTime(p.takenAt)) + ' IST</span>' + ll +
+        '<button type="button" class="btn link" data-rm="' + p.key + '">Remove</button></div></div>';
+    }).join('') : '<p class="hint">No photos yet.</p>';
+  }
+
+  /* ---------- stamp photo ---------- */
+  function loadImg(src) { return new Promise(function (res, rej) { var i = new Image(); i.onload = function () { res(i); }; i.onerror = rej; i.src = src; }); }
+  function stamp(p, phase, info) {
+    return loadImg(p.preview).then(function (img) {
+      var max = 1600, sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      var w = Math.round(img.naturalWidth * sc), h = Math.round(img.naturalHeight * sc);
+      var c = document.createElement('canvas'); c.width = w; c.height = h;
+      var g = c.getContext('2d'); g.drawImage(img, 0, 0, w, h);
+      var fs = Math.max(14, Math.round(w / 52)), pad = Math.round(fs * 0.7), lh = Math.round(fs * 1.35);
+      var lines = [
+        (phase === 'Before' ? 'PRIOR TO REPAIR' : 'AFTER REPAIR') + '  |  ' + info.road + (info.roadNo ? ' (' + info.roadNo + ')' : ''),
+        'Km ' + info.fromKm + ' - ' + info.toKm + '  |  Sec: ' + info.section + '  |  Sub-Dn: ' + info.subdivision,
+        fmtTime(p.takenAt) + ' IST',
+        'Lat ' + Number(p.lat).toFixed(6) + '  Long ' + Number(p.lng).toFixed(6) + (p.acc ? '  ±' + p.acc + ' m' : '') + (p.source === 'Entered manually' ? '  (entered)' : '')
+      ];
+      var bh = lines.length * lh + pad * 2;
+      g.fillStyle = 'rgba(0,0,0,0.62)'; g.fillRect(0, h - bh, w, bh);
+      g.fillStyle = '#e7b416'; g.fillRect(0, h - bh, Math.max(6, fs / 3), bh);
+      g.fillStyle = '#ffffff'; g.textBaseline = 'top';
+      lines.forEach(function (t, i) { g.font = (i === 0 ? '700 ' : '400 ') + fs + 'px Arial, sans-serif'; g.fillText(t, pad + fs / 2, h - bh + pad + i * lh, w - pad * 2 - fs); });
+      return c.toDataURL('image/jpeg', 0.82);
+    });
+  }
+
+  function uploadAll(workId, items, info, setMsg) {
+    var n = 0;
+    return items.reduce(function (chain, it) {
+      return chain.then(function () {
+        n++; setMsg('Uploading photo ' + n + ' of ' + items.length + '…');
+        return stamp(it.p, it.phase, info).then(function (dataUrl) {
+          return run('uploadPhoto', { workId: workId, phase: it.phase, dataUrl: dataUrl, takenAt: new Date(it.p.takenAt).toISOString(), lat: Number(it.p.lat), lng: Number(it.p.lng), acc: it.p.acc, source: it.p.source });
+        }).then(function () { it.p.uploaded = true; });
+      });
+    }, Promise.resolve());
+  }
+  function newWorkId() {
+    var d = new Date(Date.now() + 330 * 60000).toISOString(); // IST
+    var r = Math.random().toString(36).slice(2, 6).toUpperCase().replace(/[^A-Z0-9]/g, 'X');
+    while (r.length < 4) r += 'X';
+    return 'MW-' + d.slice(0, 10).replace(/-/g, '') + '-' + d.slice(11, 19).replace(/:/g, '') + '-' + r;
+  }
+  function radio(name) { var r = document.querySelector('input[name=' + name + ']:checked'); return r ? r.value : ''; }
+  function msg(id, t, cls) { var m = $(id); m.textContent = t; m.className = 'msg ' + (cls || ''); }
+  function gpsMissing(arr) { return arr.filter(function (p) { return !hasGps(p); }).length; }
+
+  /* ---------- submit new ---------- */
+  var savedWorkId = null;
+  $('#fNew').addEventListener('submit', function (e) {
+    e.preventDefault();
+    document.querySelectorAll('.invalid').forEach(function (x) { x.classList.remove('invalid'); });
+    var errs = [];
+    var need = function (id, label) {
+      if ($('#' + id).value.trim()) return;
+      var el = $('#' + id).hidden && $('#' + id + 'Sel') ? $('#' + id + 'Sel') : $('#' + id);
+      el.classList.add('invalid'); errs.push(label);
+    };
+    need('region', 'C&M Region'); need('circle', 'Circle'); need('division', 'Division'); need('subdivision', 'Sub-Division'); need('section', 'Section');
+    need('road', 'Name of the Road');
+    if (!radio('cls')) { $('#segCls').classList.add('invalid'); errs.push('Classification'); }
+    need('nature', 'Nature of work'); if ($('#nature').value === 'Others') need('natureOther', 'Work description');
+    var a = parseFloat($('#fromKm').value), b = parseFloat($('#toKm').value);
+    if (!isFinite(a)) { $('#fromKm').classList.add('invalid'); errs.push('From km'); }
+    if (!isFinite(b) || b < a) { $('#toKm').classList.add('invalid'); errs.push('To km (not less than From km)'); }
+    var status = radio('status'); if (!status) { $('#segStatus').classList.add('invalid'); errs.push('Status of work'); }
+    if (!stores.newBefore.length) errs.push('a prior-to-repair photo');
+    if (status === 'Complete' && !stores.newAfter.length) errs.push('an after-repair photo');
+    var miss = gpsMissing(stores.newBefore.concat(stores.newAfter)); if (miss) errs.push('GPS for ' + miss + ' photo(s)');
+    need('enteredBy', 'Entered by');
+    if (errs.length) { msg('#msgNew', 'Still needed: ' + errs.join(', ') + '.', 'err'); return; }
+
+    remember();
+    var workId = savedWorkId || newWorkId(); savedWorkId = workId;
+    var info = { road: $('#road').value.trim(), roadNo: $('#roadNo').value.trim(), fromKm: a.toFixed(3), toKm: b.toFixed(3), section: $('#section').value.trim(), subdivision: $('#subdivision').value.trim() };
+    var items = stores.newBefore.map(function (p) { return { p: p, phase: 'Before' }; }).concat(stores.newAfter.map(function (p) { return { p: p, phase: 'After' }; }));
+    var btn = $('#saveNew'); btn.disabled = true;
+    uploadAll(workId, items.filter(function (it) { return !it.p.uploaded; }), info, function (t) { msg('#msgNew', t); })
+      .then(function () {
+        items.forEach(function (it) { it.p.uploaded = true; });
+        msg('#msgNew', 'Saving the work…');
+        return run('submitWork', {
+          workId: workId, region: $('#region').value, circle: $('#circle').value, division: $('#division').value, subdivision: $('#subdivision').value, section: $('#section').value,
+          road: info.road, roadNo: info.roadNo, cls: radio('cls'),
+          nature: $('#nature').value === 'Others' ? 'Others: ' +$('#natureOther').value.trim() : $('#nature').value,
+          fromKm: a, toKm: b, status: status, remarks: $('#remarks').value, enteredBy: $('#enteredBy').value, mobile: $('#mobile').value
+        });
+      })
+      .then(function (r) {
+        msg('#msgNew', '');
+        var box = document.createElement('div'); box.className = 'done';
+        box.innerHTML = '<strong>Work submitted.</strong><span>Note this Work ID to update the work later:</span><span class="id">' + esc(r.workId) + '</span>';
+        $('#fNew').prepend(box); setTimeout(function () { box.remove(); }, 60000);
+        clearNew(true); window.scrollTo(0, 0); loadLists(); listLoaded = false;
+      })
+      .catch(function (err) { msg('#msgNew', 'Not saved: ' + (err && err.message || err) + ' Check the connection and tap Submit again; photos already sent will not be sent twice.', 'err'); })
+      .then(function () { btn.disabled = false; });
+  });
+
+  /* keepJurisdiction: true after a successful submit (next entry is usually the same section).
+     Name and mobile are always kept. */
+  function clearNew(keepJurisdiction) {
+    var keep = { enteredBy: $('#enteredBy').value, mobile: $('#mobile').value };
+    if (keepJurisdiction) LEVELS.forEach(function (k) { keep[k] = $('#' + k).value; });
+    $('#fNew').reset();
+    setJuris(keep.region, keep.circle, keep.division, keep.subdivision, keep.section);
+    ['enteredBy', 'mobile'].forEach(function (k) { if (k in keep) $('#' + k).value = keep[k]; });
+    stores.newBefore = []; stores.newAfter = []; renderBox('newBefore'); renderBox('newAfter');
+    savedWorkId = null; $('#otherBox').hidden = true; updLen();
+    document.querySelectorAll('.invalid').forEach(function (x) { x.classList.remove('invalid'); });
+  }
+  $('#clearNew').onclick = function () {
+    clearNew(false);
+    try { var o = JSON.parse(localStorage.getItem('mw-defaults') || '{}'); LEVELS.forEach(function (k) { delete o[k]; }); localStorage.setItem('mw-defaults', JSON.stringify(o)); } catch (e) {}
+    window.scrollTo(0, 0);
+    msg('#msgNew', 'Form cleared.', 'ok');
+  };
+
+  /* ---------- update existing ---------- */
+  var found = [];
+  var statusFilter = '';
+  var listLoaded = false;
+  function search() {
+    listLoaded = true;
+    $('#results').innerHTML = '<p class="hint">Loading works…</p>';
+    $('#listInfo').textContent = '';
+    run('findWorks', { q: $('#q').value, status: statusFilter, limit: 100 }).then(function (res) {
+      if (Array.isArray(res)) res = { works: res, matched: res.length }; // older Code.gs
+      found = (res && res.works) || [];
+      var n = (res && res.matched) || 0;
+      $('#listInfo').textContent = n ? (found.length < n ? 'Showing latest ' + found.length + ' of ' + n + ' works' : n + ' work' + (n > 1 ? 's' : '')) + (statusFilter ? ' · ' + statusFilter : '') : '';
+      $('#results').innerHTML = found.length ? found.map(function (w, i) {
+        return '<button type="button" class="res" data-i="' + i + '">' +
+          '<span class="top"><strong>' + esc(w.road) + (w.roadNo ? ' <span class="hint">(' + esc(w.roadNo) + ')</span>' : '') + '</strong>' +
+          '<span><span class="pill">' + esc(w.cls) + '</span> <span class="pill st-' + esc(String(w.status).replace(/\s+/g, '-')) + '">' + esc(w.status) + '</span></span></span>' +
+          '<span>' + esc(w.nature) + ' · Km ' + esc(w.fromKm) + '–' + esc(w.toKm) + '</span>' +
+          '<span class="hint">' + esc(w.section) + ' · ' + esc(w.subdivision) + ' · ' + esc(w.division) + '</span>' +
+          '<span class="meta2 hint"><span class="k">' + esc(w.workId) + '</span><span>Photos ' + w.beforeCount + ' before / ' + w.afterCount + ' after · ' + esc(w.updated) + '</span></span>' +
+          '</button>';
+      }).join('') : '<p class="hint">' + ($('#q').value || statusFilter ? 'No works match this filter.' : 'No works captured yet. Submitted works will be listed here.') + '</p>';
+    }).catch(function (err) { $('#results').innerHTML = '<p class="hint" style="color:var(--danger)">Could not load works: ' + esc(err && err.message || err) + '</p>'; });
+  }
+  $('#statusChips').addEventListener('click', function (e) {
+    var c = e.target.closest('[data-st]'); if (!c) return;
+    document.querySelectorAll('#statusChips .chip').forEach(function (x) { x.classList.toggle('on', x === c); });
+    statusFilter = c.dataset.st; $('#updBody').hidden = true; selected = null; search();
+  });
+  $('#refreshBtn').onclick = search;
+  $('#findBtn').onclick = search;
+  $('#q').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); search(); } });
+  $('#results').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-i]'); if (!b) return;
+    document.querySelectorAll('.res').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel');
+    selected = found[+b.dataset.i]; $('#msgUpdDone').hidden = true;
+    stores.updBefore = []; stores.updAfter = []; renderBox('updBefore'); renderBox('updAfter');
+    $('#updSummary').innerHTML = '<strong>' + esc(selected.road) + (selected.roadNo ? ' (' + esc(selected.roadNo) + ')' : '') + '</strong>' +
+      '<span>Km ' + esc(selected.fromKm) + '–' + esc(selected.toKm) + ' · ' + esc(selected.nature) + '</span>' +
+      '<span>Section: ' + esc(selected.section) + ' · Sub-Division: ' + esc(selected.subdivision) + ' · Division: ' + esc(selected.division) + '</span>' +
+      '<span>Now: <strong>' + esc(selected.status) + '</strong> · Photos: ' + selected.beforeCount + ' before, ' + selected.afterCount + ' after · Updated ' + esc(selected.updated) + '</span>';
+    var r = document.querySelector('input[name=ustatus][value="' + selected.status + '"]'); if (r) r.checked = true;
+    $('#uremarks').value = selected.remarks || '';
+    $('#updBody').hidden = false; msg('#msgUpd', '');
+    $('#updBody').scrollIntoView({ behavior: 'smooth' });
+  });
+  $('#fUpd').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!selected) return;
+    var status = radio('ustatus'); var errs = [];
+    if (!status) errs.push('Status of work');
+    if (status === 'Complete' && !selected.afterCount && !stores.updAfter.length) errs.push('an after-repair photo');
+    var miss = gpsMissing(stores.updBefore.concat(stores.updAfter)); if (miss) errs.push('GPS for ' + miss + ' photo(s)');
+    if (errs.length) { msg('#msgUpd', 'Still needed: ' + errs.join(', ') + '.', 'err'); return; }
+    var info = { road: selected.road, roadNo: selected.roadNo, fromKm: Number(selected.fromKm).toFixed(3), toKm: Number(selected.toKm).toFixed(3), section: selected.section, subdivision: selected.subdivision };
+    var items = stores.updBefore.map(function (p) { return { p: p, phase: 'Before' }; }).concat(stores.updAfter.map(function (p) { return { p: p, phase: 'After' }; }));
+    var btn = $('#saveUpd'); btn.disabled = true;
+    uploadAll(selected.workId, items.filter(function (it) { return !it.p.uploaded; }), info, function (t) { msg('#msgUpd', t); })
+      .then(function () {
+        items.forEach(function (it) { it.p.uploaded = true; });
+        msg('#msgUpd', 'Saving…');
+        return run('updateWork', { workId: selected.workId, status: status, remarks: $('#uremarks').value });
+      })
+      .then(function () {
+        msg('#msgUpd', '');
+        $('#msgUpdDone').textContent = 'Work ' + selected.workId + ' updated to ' + status + '.'; $('#msgUpdDone').hidden = false;
+        stores.updBefore = []; stores.updAfter = []; renderBox('updBefore'); renderBox('updAfter');
+        selected = null; $('#updBody').hidden = true; search();
+      })
+      .catch(function (err) { msg('#msgUpd', 'Not saved: ' + (err && err.message || err) + ' Tap Save update again.', 'err'); })
+      .then(function () { btn.disabled = false; });
+  });
+
+  /* ---------- boot ---------- */
+  recall(); loadLists(); updLen();
+})();
+</script>
+</body>
+</html>
