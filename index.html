@@ -176,7 +176,10 @@ textarea{min-height:76px;resize:vertical}
         <label><input type="radio" name="status" value="In Progress"> In Progress</label>
         <label><input type="radio" name="status" value="Complete"> Complete</label>
       </div>
-      <div class="field"><label for="remarks">Remarks</label><textarea id="remarks" placeholder="Estimate amount, agency, dates…"></textarea></div>
+      <div class="field" style="max-width:320px"><label for="estimate">Estimate amount (₹ in lakhs)</label>
+        <input type="number" id="estimate" step="0.01" min="0" inputmode="decimal" placeholder="e.g. 12.50">
+        <span class="hint" id="estHint">Enter in lakhs: ₹12,50,000 is 12.50</span></div>
+      <div class="field"><label for="remarks">Remarks</label><textarea id="remarks" placeholder="Agency, dates, anything the reviewer should know"></textarea></div>
     </fieldset>
 
     <fieldset>
@@ -234,6 +237,9 @@ textarea{min-height:76px;resize:vertical}
           <label><input type="radio" name="ustatus" value="In Progress"> In Progress</label>
           <label><input type="radio" name="ustatus" value="Complete"> Complete</label>
         </div>
+        <div class="field" style="max-width:320px"><label for="uestimate">Estimate amount (₹ in lakhs)</label>
+          <input type="number" id="uestimate" step="0.01" min="0" inputmode="decimal" placeholder="e.g. 12.50">
+          <span class="hint" id="uestHint"></span></div>
         <div class="field"><label for="uremarks">Remarks</label><textarea id="uremarks"></textarea></div>
       </fieldset>
       <fieldset>
@@ -490,6 +496,16 @@ textarea{min-height:76px;resize:vertical}
   }
   $('#fromKm').oninput = $('#toKm').oninput = updLen;
 
+  /* Show the lakhs figure in full rupees (Indian grouping) so typing errors are easy to spot */
+  function showLakhs(inputSel, hintSel) {
+    var v = parseFloat($(inputSel).value);
+    $(hintSel).textContent = isFinite(v) && v >= 0
+      ? '= ₹' + Math.round(v * 100000).toLocaleString('en-IN')
+      : (inputSel === '#estimate' ? 'Enter in lakhs: ₹12,50,000 is 12.50' : '');
+  }
+  $('#estimate').addEventListener('input', function () { showLakhs('#estimate', '#estHint'); });
+  $('#uestimate').addEventListener('input', function () { showLakhs('#uestimate', '#uestHint'); });
+
   /* ---------- photo boxes ---------- */
   function fmtTime(d) {
     return new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
@@ -622,6 +638,8 @@ textarea{min-height:76px;resize:vertical}
     if (!isFinite(a)) { $('#fromKm').classList.add('invalid'); errs.push('From km'); }
     if (!isFinite(b) || b < a) { $('#toKm').classList.add('invalid'); errs.push('To km (not less than From km)'); }
     var status = radio('status'); if (!status) { $('#segStatus').classList.add('invalid'); errs.push('Status of work'); }
+    var est = $('#estimate').value.trim();
+    if (est && !(parseFloat(est) >= 0)) { $('#estimate').classList.add('invalid'); errs.push('Estimate amount (a number in lakhs)'); }
     if (!stores.newBefore.length) errs.push('a prior-to-repair photo');
     if (status === 'Complete' && !stores.newAfter.length) errs.push('an after-repair photo');
     var miss = gpsMissing(stores.newBefore.concat(stores.newAfter)); if (miss) errs.push('GPS for ' + miss + ' photo(s)');
@@ -641,7 +659,7 @@ textarea{min-height:76px;resize:vertical}
           workId: workId, region: $('#region').value, circle: $('#circle').value, division: $('#division').value, subdivision: $('#subdivision').value, section: $('#section').value,
           road: info.road, roadNo: info.roadNo, cls: radio('cls'),
           nature: $('#nature').value === 'Others' ? 'Others: ' +$('#natureOther').value.trim() : $('#nature').value,
-          fromKm: a, toKm: b, status: status, remarks: $('#remarks').value, enteredBy: $('#enteredBy').value, mobile: $('#mobile').value
+          fromKm: a, toKm: b, status: status, remarks: $('#remarks').value, enteredBy: $('#enteredBy').value, mobile: $('#mobile').value, estimate: $('#estimate').value
         });
       })
       .then(function (r) {
@@ -664,7 +682,7 @@ textarea{min-height:76px;resize:vertical}
     setJuris(keep.region, keep.circle, keep.division, keep.subdivision, keep.section);
     ['enteredBy', 'mobile'].forEach(function (k) { if (k in keep) $('#' + k).value = keep[k]; });
     stores.newBefore = []; stores.newAfter = []; renderBox('newBefore'); renderBox('newAfter');
-    savedWorkId = null; $('#otherBox').hidden = true; updLen();
+    savedWorkId = null; $('#otherBox').hidden = true; updLen(); showLakhs('#estimate', '#estHint');
     document.querySelectorAll('.invalid').forEach(function (x) { x.classList.remove('invalid'); });
   }
   $('#clearNew').onclick = function () {
@@ -693,7 +711,7 @@ textarea{min-height:76px;resize:vertical}
           '<span><span class="pill">' + esc(w.cls) + '</span> <span class="pill st-' + esc(String(w.status).replace(/\s+/g, '-')) + '">' + esc(w.status) + '</span></span></span>' +
           '<span>' + esc(w.nature) + ' · Km ' + esc(w.fromKm) + '–' + esc(w.toKm) + '</span>' +
           '<span class="hint">' + esc(w.section) + ' · ' + esc(w.subdivision) + ' · ' + esc(w.division) + '</span>' +
-          '<span class="meta2 hint"><span class="k">' + esc(w.workId) + '</span><span>Photos ' + w.beforeCount + ' before / ' + w.afterCount + ' after · ' + esc(w.updated) + '</span></span>' +
+          '<span class="meta2 hint"><span class="k">' + esc(w.workId) + '</span><span>' + (w.estimate ? 'Est. ₹' + esc(w.estimate) + ' L · ' : '') + 'Photos ' + w.beforeCount + ' before / ' + w.afterCount + ' after · ' + esc(w.updated) + '</span></span>' +
           '</button>';
       }).join('') : '<p class="hint">' + ($('#q').value || statusFilter ? 'No works match this filter.' : 'No works captured yet. Submitted works will be listed here.') + '</p>';
     }).catch(function (err) { $('#results').innerHTML = '<p class="hint" style="color:var(--danger)">Could not load works: ' + esc(err && err.message || err) + '</p>'; });
@@ -717,6 +735,7 @@ textarea{min-height:76px;resize:vertical}
       '<span>Now: <strong>' + esc(selected.status) + '</strong> · Photos: ' + selected.beforeCount + ' before, ' + selected.afterCount + ' after · Updated ' + esc(selected.updated) + '</span>';
     var r = document.querySelector('input[name=ustatus][value="' + selected.status + '"]'); if (r) r.checked = true;
     $('#uremarks').value = selected.remarks || '';
+    $('#uestimate').value = selected.estimate ? String(selected.estimate).replace(/,/g, '') : ''; showLakhs('#uestimate', '#uestHint');
     $('#updBody').hidden = false; msg('#msgUpd', '');
     $('#updBody').scrollIntoView({ behavior: 'smooth' });
   });
@@ -735,7 +754,7 @@ textarea{min-height:76px;resize:vertical}
       .then(function () {
         items.forEach(function (it) { it.p.uploaded = true; });
         msg('#msgUpd', 'Saving…');
-        return run('updateWork', { workId: selected.workId, status: status, remarks: $('#uremarks').value });
+        return run('updateWork', { workId: selected.workId, status: status, remarks: $('#uremarks').value, estimate: $('#uestimate').value });
       })
       .then(function () {
         msg('#msgUpd', '');
