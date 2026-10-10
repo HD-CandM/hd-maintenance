@@ -260,7 +260,7 @@ textarea{min-height:76px;resize:vertical}
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   /* ====== SETTING: when this page is hosted outside Apps Script (e.g. GitHub Pages),
      paste your Apps Script Web app URL (ending in /exec) between the quotes. ====== */
-  var API_URL = '';
+  var API_URL = 'https://script.google.com/macros/s/AKfycbxVD5ynO2S_ji4wfi55gkCiT1P6Tlggm5ersXjklob1TiNFN07miV2Wrb-AjpfnkxPO/exec';
 
   var IN_APPS_SCRIPT = !!(window.google && google.script && google.script.run);
   var run = function (fn, arg) {
