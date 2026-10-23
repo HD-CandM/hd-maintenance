@@ -44,7 +44,7 @@ legend .n{font:500 .72rem var(--mono);color:var(--muted);border:1px solid var(--
 label,.lbl{font-weight:600;font-size:.92rem}
 .req{color:var(--danger)}
 .hint{font-size:.82rem;color:var(--muted);margin:0}
-input[type=text],input[type=number],input[type=tel],input[type=search],select,textarea{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:46px}
+input[type=text],input[type=password],input[type=number],input[type=tel],input[type=search],select,textarea{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:46px}
 textarea{min-height:76px;resize:vertical}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .invalid{border-color:var(--danger)!important;background:color-mix(in srgb,var(--danger) 6%,var(--bg))!important}
@@ -77,6 +77,12 @@ textarea{min-height:76px;resize:vertical}
 .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--line);padding-top:16px}
 .msg{font-size:.93rem;flex:1 1 220px}
 .msg.err{color:var(--danger)} .msg.ok{color:var(--accent);font-weight:600}
+.userbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:.9rem;background:var(--sunk);border-radius:8px;padding:6px 6px 6px 12px}
+.userbar #userInfo{min-width:0;overflow-wrap:anywhere}
+.login{max-width:420px;width:100%;justify-self:center}
+.enteredby{margin:0;font-weight:600}
+select:disabled{opacity:1;color:var(--fg);background:var(--sunk);cursor:not-allowed}
+input[readonly]{background:var(--sunk)}
 .done{background:var(--ok-bg);color:var(--ok-fg);border-radius:10px;padding:16px;display:grid;gap:6px}
 .done .id{font:500 1.1rem var(--mono)}
 .results{display:grid;gap:8px}
@@ -93,6 +99,19 @@ textarea{min-height:76px;resize:vertical}
 .res .meta2{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .summary{background:var(--sunk);border-radius:8px;padding:12px 14px;font-size:.93rem;display:grid;gap:2px}
 [hidden]{display:none!important}
+.ub-actions{display:flex;gap:6px;flex-wrap:wrap}
+.notice{margin:0;background:var(--warn-bg);color:var(--warn-fg);border-radius:8px;padding:10px 14px;font-size:.93rem}
+.off{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.off-main{display:grid;gap:2px;min-width:0}
+.pill.os-Active{background:var(--ok-bg);color:var(--ok-fg)} .pill.os-Code-issued{background:var(--warn-bg);color:var(--warn-fg)}
+.pill.os-Disabled{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
+.codes{border:2px solid var(--accent);border-radius:10px;padding:14px;display:grid;gap:10px;background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+.codelist{display:grid;gap:6px}
+.code-row{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:6px 0}
+.code{font:600 1.35rem var(--mono);letter-spacing:.08em;white-space:nowrap}
+#codesText{font:500 .8rem var(--mono)}
+.login{max-width:440px}
+[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -100,31 +119,72 @@ textarea{min-height:76px;resize:vertical}
   <header>
     <div class="eyebrow">Highways · Construction &amp; Maintenance</div>
     <h1>Road Maintenance Works</h1>
-    <div class="bar">
+    <div class="userbar" id="userBar" hidden>
+      <span id="userInfo"></span>
+      <span class="ub-actions">
+        <button type="button" class="btn sm" id="changePwBtn">Change password</button>
+        <button type="button" class="btn sm" id="signOutBtn">Sign out</button>
+      </span>
+    </div>
+    <div class="bar" id="appBar" hidden>
       <div class="tabs">
-        <button type="button" id="tabNew" class="on">New work</button>
-        <button type="button" id="tabUpd">Update a work</button>
+        <button type="button" id="tabNew">New work</button>
+        <button type="button" id="tabUpd">Works</button>
+        <button type="button" id="tabOff">Manage offices</button>
       </div>
       <span class="gps" id="gps">GPS: starting…</span>
     </div>
   </header>
 
+  <!-- ================= SIGN IN ================= -->
+  <form id="fLogin" class="card login" novalidate hidden>
+    <fieldset>
+      <legend>Sign in</legend>
+      <div class="field"><label for="loginUser">Office username</label>
+        <input type="text" id="loginUser" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="e.g. s_vadalur-1"></div>
+      <div class="field"><label for="loginPw">Password</label>
+        <input type="password" id="loginPw" autocomplete="current-password" placeholder="Password or one-time code"></div>
+      <p class="hint">First time, or after a reset? Enter the 6-digit one-time code from the office above you as the password. You will then set your own password.</p>
+    </fieldset>
+    <div class="actions">
+      <button type="submit" class="btn primary" id="loginBtn">Sign in</button>
+      <span class="msg" id="msgLogin" role="status" aria-live="polite"></span>
+    </div>
+  </form>
+
+  <!-- ================= SET / CHANGE PASSWORD ================= -->
+  <form id="fSetPw" class="card login" novalidate hidden>
+    <fieldset>
+      <legend id="setPwTitle">Set your password</legend>
+      <p class="hint" id="setPwIntro"></p>
+      <div class="field" id="curPwBox" hidden><label for="curPw">Current password</label>
+        <input type="password" id="curPw" autocomplete="current-password"></div>
+      <div class="field"><label for="newPw">New password</label>
+        <input type="password" id="newPw" autocomplete="new-password"></div>
+      <div class="field"><label for="newPw2">Type it again</label>
+        <input type="password" id="newPw2" autocomplete="new-password"></div>
+      <p class="hint">At least 8 characters. Not the username, and not the word "password". Share it only with staff of your office.</p>
+    </fieldset>
+    <div class="actions">
+      <button type="submit" class="btn primary" id="setPwBtn">Save password</button>
+      <button type="button" class="btn" id="setPwCancel" hidden>Cancel</button>
+      <span class="msg" id="msgSetPw" role="status" aria-live="polite"></span>
+    </div>
+  </form>
+
   <!-- ================= NEW WORK ================= -->
-  <form id="fNew" class="card" novalidate>
+  <form id="fNew" class="card" novalidate hidden>
     <fieldset>
       <legend><span class="n">A</span> Jurisdiction</legend>
       <div class="grid">
-        <div class="field"><label for="region">C&amp;M Region <span class="req">*</span></label><select id="region"><option value="">Select region…</option></select></div>
-        <div class="field"><label for="circle">Circle <span class="req">*</span></label><select id="circle" disabled><option value="">Select region first</option></select></div>
-        <div class="field"><label for="division">Division <span class="req">*</span></label><select id="division" disabled><option value="">Select circle first</option></select></div>
-        <div class="field"><label for="subdivisionSel">Sub-Division <span class="req">*</span></label><select id="subdivisionSel" disabled><option value="">Select division first</option></select>
-          <input type="text" id="subdivision" autocomplete="off" placeholder="Type the sub-division name" aria-label="Sub-Division name" hidden></div>
-        <div class="field"><label for="sectionSel">Section <span class="req">*</span></label><select id="sectionSel" disabled><option value="">Select division first</option></select>
-          <input type="text" id="section" autocomplete="off" placeholder="Type the section name" aria-label="Section name" hidden></div>
+        <div class="field"><label for="region">C&amp;M Region <span class="req">*</span></label><select id="region"></select></div>
+        <div class="field"><label for="circle">Circle <span class="req">*</span></label><select id="circle"></select></div>
+        <div class="field"><label for="division">Division <span class="req">*</span></label><select id="division"></select></div>
+        <div class="field"><label for="subdivision">Sub-Division <span class="req">*</span></label><select id="subdivision"></select></div>
+        <div class="field"><label for="section">Section <span class="req">*</span></label><select id="section"></select></div>
       </div>
-      <p class="hint">Pick each level from the lists. If a Sub-Division or Section is missing, choose "Not in list" and type it. All five are remembered on this phone for the next entry.</p>
+      <p class="hint" id="jurisHint">Levels above your office are fixed by your login.</p>
     </fieldset>
-
     <fieldset>
       <legend><span class="n">B</span> Road and work</legend>
       <div class="grid">
@@ -191,13 +251,13 @@ textarea{min-height:76px;resize:vertical}
       </div>
       <p class="hint">At least one prior-to-repair photo is needed; after-repair photos are needed when the status is Complete.</p>
     </fieldset>
-
     <fieldset>
       <legend><span class="n">E</span> Entered by</legend>
       <div class="grid">
-        <div class="field"><label for="enteredBy">Name &amp; designation <span class="req">*</span></label><input type="text" id="enteredBy" placeholder="e.g. R. Kumar, AE" autocomplete="name"></div>
-        <div class="field"><label for="mobile">Mobile No.</label><input type="tel" id="mobile" inputmode="numeric" maxlength="10" autocomplete="tel"></div>
+        <div class="field"><label for="person">Your name &amp; designation <span class="req">*</span></label><input type="text" id="person" autocomplete="name" placeholder="e.g. R. Kumar, AE"></div>
+        <div class="field"><label for="mobile">Mobile No.</label><input type="tel" id="mobile" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10 digits"></div>
       </div>
+      <p class="hint">Several staff share the office login, so each entry records who made it. Remembered on this phone.</p>
     </fieldset>
 
     <div class="actions">
@@ -207,7 +267,7 @@ textarea{min-height:76px;resize:vertical}
     </div>
   </form>
 
-  <!-- ================= UPDATE ================= -->
+  <!-- ================= WORKS ================= -->
   <form id="fUpd" class="card" novalidate hidden>
     <fieldset>
       <legend><span class="n">1</span> Works captured</legend>
@@ -229,228 +289,187 @@ textarea{min-height:76px;resize:vertical}
 
     <div id="updBody" hidden style="display:grid;gap:22px">
       <div class="summary" id="updSummary"></div>
-      <fieldset>
-        <legend><span class="n">2</span> New status</legend>
-        <div class="seg" id="segUStatus" role="radiogroup" aria-label="Status of work">
-          <label><input type="radio" name="ustatus" value="Estimate"> Estimate</label>
-          <label><input type="radio" name="ustatus" value="Tender"> Tender</label>
-          <label><input type="radio" name="ustatus" value="In Progress"> In Progress</label>
-          <label><input type="radio" name="ustatus" value="Complete"> Complete</label>
+      <p class="notice" id="viewOnly" hidden>Your office can view works but not change them.</p>
+      <div id="updEdit" style="display:grid;gap:22px">
+        <fieldset>
+          <legend><span class="n">2</span> New status</legend>
+          <div class="seg" id="segUStatus" role="radiogroup" aria-label="Status of work">
+            <label><input type="radio" name="ustatus" value="Estimate"> Estimate</label>
+            <label><input type="radio" name="ustatus" value="Tender"> Tender</label>
+            <label><input type="radio" name="ustatus" value="In Progress"> In Progress</label>
+            <label><input type="radio" name="ustatus" value="Complete"> Complete</label>
+          </div>
+          <div class="field" style="max-width:320px"><label for="uestimate">Estimate amount (₹ in lakhs)</label>
+            <input type="number" id="uestimate" step="0.01" min="0" inputmode="decimal" placeholder="e.g. 12.50">
+            <span class="hint" id="uestHint"></span></div>
+          <div class="field"><label for="uremarks">Remarks</label><textarea id="uremarks"></textarea></div>
+        </fieldset>
+        <fieldset>
+          <legend><span class="n">3</span> Add photographs</legend>
+          <div class="photos">
+            <div class="pcol" data-box="updBefore" data-phase="Before" data-title="Prior to repair"></div>
+            <div class="pcol" data-box="updAfter" data-phase="After" data-title="After repair"></div>
+          </div>
+        </fieldset>
+        <div class="field" style="max-width:420px"><label for="uperson">Updated by (name &amp; designation) <span class="req">*</span></label><input type="text" id="uperson" autocomplete="name"></div>
+        <div class="actions">
+          <button type="submit" class="btn primary" id="saveUpd">Save update</button>
+          <span class="msg" id="msgUpd" role="status" aria-live="polite"></span>
         </div>
-        <div class="field" style="max-width:320px"><label for="uestimate">Estimate amount (₹ in lakhs)</label>
-          <input type="number" id="uestimate" step="0.01" min="0" inputmode="decimal" placeholder="e.g. 12.50">
-          <span class="hint" id="uestHint"></span></div>
-        <div class="field"><label for="uremarks">Remarks</label><textarea id="uremarks"></textarea></div>
-      </fieldset>
-      <fieldset>
-        <legend><span class="n">3</span> Add photographs</legend>
-        <div class="photos">
-          <div class="pcol" data-box="updBefore" data-phase="Before" data-title="Prior to repair"></div>
-          <div class="pcol" data-box="updAfter" data-phase="After" data-title="After repair"></div>
-        </div>
-      </fieldset>
-      <div class="actions">
-        <button type="submit" class="btn primary" id="saveUpd">Save update</button>
-        <span class="msg" id="msgUpd" role="status" aria-live="polite"></span>
       </div>
     </div>
   </form>
+
+  <!-- ================= MANAGE OFFICES ================= -->
+  <section id="fOff" class="card" hidden>
+    <fieldset>
+      <legend>Offices under you</legend>
+      <p class="hint" id="offIntro">Activate an office to get its one-time code (6 digits, valid 48 hours, works once). Send it to that office by phone or WhatsApp. Use Reset when an office forgets its password: the old password stops working and its phones are signed out.</p>
+      <div class="chips" id="offChips" role="group" aria-label="Filter by status">
+        <button type="button" class="chip on" data-os="">All</button>
+        <button type="button" class="chip" data-os="Not activated">Not activated</button>
+        <button type="button" class="chip" data-os="Code issued">Code issued</button>
+        <button type="button" class="chip" data-os="Active">Active</button>
+      </div>
+      <input type="search" id="offQ" placeholder="Search office or username…" aria-label="Search offices">
+      <div class="bar"><span class="hint" id="offInfo"></span>
+        <span class="ub-actions"><button type="button" class="btn sm" id="offRefresh">Refresh</button>
+        <button type="button" class="btn sm primary" id="bulkBtn" hidden></button></span></div>
+    </fieldset>
+
+    <div class="codes" id="codesBox" hidden>
+      <div class="bar"><strong>One-time codes</strong><button type="button" class="btn sm" id="codesClose">Done</button></div>
+      <p class="hint">Shown only now. Copy and send each office its own code. A new code replaces any earlier one.</p>
+      <div id="codesList" class="codelist"></div>
+      <textarea id="codesText" readonly rows="6" aria-label="Codes to copy"></textarea>
+      <div class="actions"><button type="button" class="btn primary" id="copyCodes">Copy all</button><span class="msg" id="msgCodes" role="status" aria-live="polite"></span></div>
+    </div>
+
+    <p class="msg" id="msgOff" role="status" aria-live="polite"></p>
+    <div class="results" id="offList"><p class="hint">Loading offices…</p></div>
+  </section>
 </div>
 
-<datalist id="dl-region"></datalist><datalist id="dl-circle"></datalist><datalist id="dl-division"></datalist>
-<datalist id="dl-subdivision"></datalist><datalist id="dl-section"></datalist><datalist id="dl-road"></datalist>
+<datalist id="dl-road"></datalist>
 
 <script>
 (function () {
   var $ = function (s) { return document.querySelector(s); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+
   /* ====== SETTING: when this page is hosted outside Apps Script (e.g. GitHub Pages),
      paste your Apps Script Web app URL (ending in /exec) between the quotes. ====== */
   var API_URL = 'https://script.google.com/macros/s/AKfycbylba9zDO8y6yGgFsZCQE2U4y4mQkzLiTwtztTEI_lETFS0-oK8WFnjEDr4hjbAi4c8/exec';
 
   var IN_APPS_SCRIPT = !!(window.google && google.script && google.script.run);
+  var session = null;   // {token, user}
+  var setupToken = null;
   var run = function (fn, arg) {
+    var req = { fn: fn, arg: arg === undefined ? null : arg, token: session ? session.token : '' };
+    var p;
     if (IN_APPS_SCRIPT) {
-      return new Promise(function (res, rej) { google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](arg); });
+      p = new Promise(function (res, rej) { google.script.run.withSuccessHandler(res).withFailureHandler(rej).api(req); });
+    } else if (!API_URL) {
+      p = Promise.reject(new Error('The app is not linked to the Google Sheet yet (API_URL is empty).'));
+    } else {
+      p = fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(req) })
+        .then(function (r) { if (!r.ok) throw new Error('Server error ' + r.status + '.'); return r.json(); })
+        .then(function (j) { if (!j.ok) throw new Error(j.error || 'Request failed.'); return j.result; },
+              function (e) { throw new Error(e && e.message && /fetch|network/i.test(e.message) ? 'No internet connection.' : (e && e.message) || 'Request failed.'); });
     }
-    if (!API_URL) return Promise.reject(new Error('The app is not linked to the Google Sheet yet (API_URL is empty).'));
-    return fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, arg: arg === undefined ? null : arg }) })
-      .then(function (r) { if (!r.ok) throw new Error('Server error ' + r.status + '.'); return r.json(); })
-      .then(function (j) { if (!j.ok) throw new Error(j.error || 'Request failed.'); return j.result; },
-            function (e) { throw new Error(e && e.message && /fetch|network/i.test(e.message) ? 'No internet connection.' : (e && e.message) || 'Request failed.'); });
+    return p.catch(function (e) {
+      var m = (e && e.message) || String(e);
+      var a = m.indexOf('AUTH:');
+      if (a >= 0) { signOut(m.slice(a + 5).trim()); throw new Error('Please sign in again.'); }
+      throw new Error(m.replace(/^(Exception|Error):\s*/, ''));
+    });
   };
   if (!IN_APPS_SCRIPT && 'serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('sw.js').catch(function () {});
   }
-  var LEVELS = ['region', 'circle', 'division', 'subdivision', 'section'];
+  var APP_LINK = IN_APPS_SCRIPT ? '' : location.origin + location.pathname;
 
-  /* ---------- C&M jurisdiction: Region → Circle → Division ---------- */
-  var JURIS = {
-    'Chennai': {
-      'Chennai': ['City Roads-1', 'City Roads-2', 'Chengalpattu'],
-      'Kancheepuram': ['Kancheepuram', 'Tiruvallur', 'Gummidipoondi'],
-      'Tiruvannamalai': ['Tiruvannamalai', 'Polur', 'Cheyyar', 'Kallakurichi', 'Ulundurpet'],
-      'Vellore': ['Vellore', 'Ranipet', 'Tirupathur'],
-      'Villupuram': ['Villupuram', 'Tindivanam', 'Cuddalore', 'Virudhachalam']
-    },
-    'Trichy': {
-      'Trichy': ['Trichy', 'Viralimalai', 'Karur', 'Pudukkottai'],
-      'Thanjavur': ['Thanjavur', 'Kumbakonam', 'Pattukkottai', 'Aranthangi'],
-      'Perambalur': ['Perambalur', 'Ariyalur', 'Thuraiyur'],
-      'Tiruvarur': ['Tiruvarur', 'Mayiladuthurai', 'Nagapattinam']
-    },
-    'Coimbatore': {
-      'Coimbatore': ['Coimbatore-1', 'Coimbatore-2', 'Pollachi', 'Ooty'],
-      'Dharmapuri': ['Dharmapuri', 'Palacode', 'Krishnagiri', 'Hosur'],
-      'Salem': ['Salem', 'Edappadi', 'Namakkal'],
-      'Erode': ['Erode', 'Tiruchengode', 'Bhavani', 'Gobi'],
-      'Tiruppur': ['Tiruppur', 'Kangeyam', 'Dharapuram']
-    },
-    'Madurai': {
-      'Madurai': ['Madurai-1', 'Madurai-2', 'Sivagangai', 'Karaikudi'],
-      'Dindigul': ['Dindigul', 'Palani', 'Oddanchathiram', 'Theni'],
-      'Ramanathapuram': ['Ramanathapuram', 'Paramakudi', 'Kovilpatti'],
-      'Virudhunagar': ['Virudhunagar', 'Rajapalayam', 'Tenkasi'],
-      'Tirunelveli': ['Tirunelveli', 'Radhapuram', 'Nagercoil', 'Thoothukudi']
-    }
-  };
-  function opts(sel, items, placeholder, value) {
-    sel.innerHTML = '<option value="">' + esc(placeholder) + '</option>' +
-      items.map(function (v) { return '<option value="' + esc(v) + '">' + esc(v) + '</option>'; }).join('');
-    sel.disabled = !items.length;
-    sel.value = items.indexOf(value) >= 0 ? value : '';
-  }
-  /* Sub-Divisions and Sections under each Division (from Subdiv_and_Sections.xlsx) */
-  var SUBSEC = {"City Roads-1":{"sub":["Chennai City Roads","Tambaram","Velachery"],"sec":["Chennai City roads Sec - 1","Chennai City roads Sec - 2","Chennai City roads Sec - 3","Chennai City roads Sec - 4","Chennai City roads Sec - 5","Chennai City roads Sec - 6","Chennai City roads Sec - 7"]},
-    "City Roads-2":{"sub":["City Roads 2","Avadi"],"sec":["Chennai City roads Sec - 8","Chennai City roads Sec - 9","Chennai City roads Sec - 10","Chennai City roads Sec - 11","Chennai City roads Sec - 12","Chennai City roads Sec - 13","Avadi","Poonamallee"]},
-    "Chengalpattu":{"sub":["Chengalpattu","Madurantakam"],"sec":["Chengalpattu","Thiruporur","Thirukalukundram","Vandalur - 1","Vandalur - 2","Singaperumalkoil - 1","Singaperumalkoil - 2","Madurantakam","Acharapakkam","Melmaruvathur - 1","Melmaruvathur - 2","Cheyyur - 1","Cheyyur - 2"]},
-    "Kancheepuram":{"sub":["Kancheepuram","Sriperumbudur","Uthiramerur"],"sec":["Kanchipuram","Walajabad - 1","Walajabad - 2","Sriperumbudur - 1","Sriperumbudur - 2","Kundrathur - 1","Kundrathur - 2","Uthiramerur"]},
-    "Tiruvallur":{"sub":["Tiruvallur","Ambattur","Gummidipoondi","Pallipet","Ponneri","Tiruttani"],"sec":["Thiruvallur East","Thiruvallur West","Kadambathur - 1","Kadambathur - 2","Tiruthani","Pallipattu"]},
-    "Gummidipoondi":{"sub":["Tiruvallur","Ambattur","Gummidipoondi","Pallipet","Ponneri","Tiruttani"],"sec":["Gummidipoondi","Ponneri","Uthukottai - 1","Uthukottai - 2"]},
-    "Tiruvannamalai":{"sub":["Tiruvannamalai","Kilpennathur","Chengam","Polur","Thandrampattu"],"sec":["Tiruvannamalai North","Tiruvannamalai South","Thurinjapuram","Thandarampattu","Chengam - 1","Chengam - 2","Keezhpennathur"]},
-    "Polur":{"sub":["Tiruvannamalai","Kilpennathur","Chengam","Polur","Thandrampattu"],"sec":["Polur","Kalasapakkam","Chetpet - 1","Chetpet - 2","Arani - 1","Arani - 2"]},
-    "Cheyyar":{"sub":["Cheyyar","Arni","Vandavasi"],"sec":["Cheyyar","Vembakkam","Anakkavoor - 1","Anakkavoor - 2","Vandavasi","Peranamallur","Thellar - 1","Thellar - 2","Thellar - 3"]},
-    "Kallakurichi":{"sub":["Kallakurichi","Sankarapuram","Tirukovilur","Ulundurpet"],"sec":["Kallakurichi","Chinnasalem","Kalvarayanmalai - 1","Kalvarayanmalai - 2","Sankarapuram - 1","Sankarapuram - 2"]},
-    "Ulundurpet":{"sub":["Kallakurichi","Sankarapuram","Tirukovilur","Ulundurpet"],"sec":["Ulundurpet","Kalvarayanmalai","Rishivandhiyam - 1","Rishivandhiyam - 2"]},
-    "Vellore":{"sub":["Vellore","Katpadi","Gudiyatham"],"sec":["Vellore","Anaicut","Katpadi - 1","Katpadi - 2","Gudiyatham"]},
-    "Ranipet":{"sub":["Arakkonam","Arcot","Walajahpet"],"sec":["Arakonam West","Arakonam East","Sholinghur","Arcot","Kalavai","Walajah"]},
-    "Tirupathur":{"sub":["Tirupathur","Vaniyambadi"],"sec":["Thirupathur","Vaniyambadi","Ambur - 1","Ambur - 2","Ambur - 3","Yelagiri"]},
-    "Villupuram":{"sub":["Villupuram","Gingee","Tindivanam","Vanur"],"sec":["Villupuram - 1","Villupuram - 2","Villupuram - 3","Vikiranvandi - 1","Vikiranvandi - 2","Koliyanur - 1","Koliyanur - 2","Vanur"]},
-    "Tindivanam":{"sub":["Villupuram","Gingee","Tindivanam","Vanur"],"sec":["Tindivanam South","Tindivanam North","Gingee","Valathy","Melmalaiyanur - 1","Melmalaiyanur - 2","Vallam - 1","Vallam - 2","Olakkur - 1","Olakkur - 2"]},
-    "Cuddalore":{"sub":["Cuddalore","Chidambaram","Kurinchipadi","Kattumannarkoil","Panruti"],"sec":["Cuddalore - 1","Cuddalore - 2","Chidambaram","Kurinjipadi","Portnova","Vadalur","Kattumannarkoil - 1","Kattumannarkoil - 2"]},
-    "Virudhachalam":{"sub":["Virudhachalam","Panruti","Tittagudi"],"sec":["Virudhachalam - 1","Virudhachalam - 2","Panruti - 1","Panruti - 2","Thittakudi - 1","Thittakudi - 2","Nallur - 1","Nallur - 2"]},
-    "Trichy":{"sub":["Tiruchirappalli","Lalgudi","Manapparai","Musiri","Thuraiyur"],"sec":["Trichy East","Trichy West","Srirangam I","Srirangam II","Lalgudi","Manachanallur","Thiruverumbur I","Thiruverumbur II","Thiruverumbur III","Manapparai","Marungapuri"]},
-    "Viralimalai":{"sub":["Tiruchirappalli","Lalgudi","Manapparai","Musiri","Thuraiyur"],"sec":["Viralimalai","Illuppur","Keeranur I","Keeranur II","Kudimiyanmalai","Ponnamaravathi I","Ponnamaravathi II","Ponnamaravathi III"]},
-    "Karur":{"sub":["Karur","Aravakurichi","Krishnarayapuram","Kulithalai"],"sec":["Karur East","Karur West","Pugalur I","Pugalur II","Pugalur III","Aravakurichy","Krishnarayapuram","Tharangampadi","Mayanur I","Mayanur II","Kulithalai"]},
-    "Pudukkottai":{"sub":["Pudukottai","Alangudi","Aranthangi","Thirumayam","Keeranur","Avudaiyarkoil"],"sec":["Pudukottai East","Gandharvakottai","Pudukottai West","Kulathur I","Kulathur II","Kulathur III","Thirumayam I","Thirumayam II"]},
-    "Thanjavur":{"sub":["Thanjavur","Kumbakonam","Orathanadu","Papanasam","Pattukottai","Peravoorani","Thiruvidaimaruthur","Thiruvaiyaru"],"sec":["Thanjavur I","Thanjavur II","Orathanadu I","Orathanadu II","Orathanadu III","Thiruvaiyaru","Thirukkattupalli","Budalur I","Budalur II"]},
-    "Kumbakonam":{"sub":["Kumbakonam","Papanasam","Thiruvidaimaruthur","Thiruvaiyaru"],"sec":["Kumbakonam South","Kumbakonam North","Papanasam I","Papanasam II","Thiruvidaimaruthur"]},
-    "Pattukkottai":{"sub":["Kumbakonam","Papanasam","Thiruvidaimaruthur","Thiruvaiyaru"],"sec":["Pattukottai I","Pattukottai II","Thiruvonam I","Thiruvonam II","Adiramapattinam","Peravurani I","Peravurani II"]},
-    "Aranthangi":{"sub":["Pudukottai","Alangudi","Aranthangi","Thirumayam","Keeranur","Avudaiyarkoil"],"sec":["Aranthangi I","Aranthangi II","Alangudi I","Alangudi II","Karambakudi","Avudaiyarkoil I","Avudaiyarkoil II","Manamelkudi"]},
-    "Perambalur":{"sub":["Perambalur","Kunnam","Veppanthattai"],"sec":["Perambalur I","Perambalur II","Kunnam I","Kunnam II","Veppanthattai I","Veppanthattai II"]},
-    "Ariyalur":{"sub":["Ariyalur","Sendurai","Jayankondam"],"sec":["Ariyalur I","Ariyalur II","Thirumanur I","Thirumanur II","Thirumanur III","Sendurai"]},
-    "Thuraiyur":{"sub":["Tiruchirappalli","Lalgudi","Manapparai","Musiri","Thuraiyur"],"sec":["Thuraiyur I","Thuraiyur II","Musiri I","Musiri II","Thottiyam I","Thottiyam II","Uppiliyapuram I","Uppiliyapuram II"]},
-    "Tiruvarur":{"sub":["Thiruvarur","Kudavasal","Mannargudi","Nannilam","Thiruthuraipoondi"],"sec":["Thiruvarur","Kodavasal","Valangaiman","Mannargudi","Needamangalam","Koradachery I","Koradachery II","Koradachery III","Nannilam","Thiruthuraipoondi"]},
-    "Mayiladuthurai":{"sub":["Mayiladuthurai","Sirkazhi","Sembanarkoil"],"sec":["Mayiladuthurai-1","Mayiladuthurai-2","Sirkali-1","Sirkali-2","Sembanarkoil"]},
-    "Nagapattinam":{"sub":["Nagapattinam","Vedaranyam","Thirukuvalai"],"sec":["Nagapattinam","Keelvelur","Vedaranyam","Thirukuvalai"]},
-    "Coimbatore-1":{"sub":["Coimbatore(North)","Coimbatore(South)","Mettupalayam","Sulur","Annur","Coimbatore Special"],"sec":["Section - 1","Section - 2","Mettupalayam"]},
-    "Coimbatore-2":{"sub":["Coimbatore(North)","Coimbatore(South)","Mettupalayam","Sulur","Annur","Coimbatore Special"],"sec":["Section - 1","Section - 2"]},
-    "Pollachi":{"sub":["Pollachi","Kinathukadavu","Anaimalai","Valparai"],"sec":["Pollachi","Thirupathur Sec - 1","Thirupathur Sec - 2","Anamalai","Valparai"]},
-    "Ooty":{"sub":["Udhagamandalam","Coonoor","Gudalur","Kotagiri"],"sec":["Udhagamandalam","Kudagu","Kethi","Pandalur","Kunnur","Gudalur","Kothagiri"]},
-    "Dharmapuri":{"sub":["Dharmapuri","Harur","Pappireddipatti","Palacode","Pennagaram"],"sec":["Dharmapuri East","Dharmapuri West","Section - 1","Section - 2","Arur","Morappur","Pappireddipatti"]},
-    "Palacode":{"sub":["Dharmapuri","Harur","Pappireddipatti","Palacode","Pennagaram"],"sec":["Palacode","Section - 1","Section - 2","Section - 3","Pennagaram"]},
-    "Krishnagiri":{"sub":["Krishnagiri","Denkanikottai","Hosur","Uthangarai"],"sec":["Krishnagiri","Kaveripattinam","Uthankarai","Mathur","Section - 1","Section - 2","Pochampalli"]},
-    "Hosur":{"sub":["Krishnagiri","Denkanikottai","Hosur","Uthangarai"],"sec":["Hosur","Denkanikottai","Rayakottai","Section - 1","Section - 2"]},
-    "Salem":{"sub":["Salem","Yercaud","Attur","Vazhappadi"],"sec":["Section - 1","Section - 2","Yercaud","Attur East","Attur West","Vazhapadi","Pethanayakkanpalayam"]},
-    "Edappadi":{"sub":["Edappady","Mettur","Omalur","Sangagiri"],"sec":["Edappadi","Omalur","Mecheri","Sankagiri","Mettur","Section - 1","Section - 2"]},
-    "Namakkal":{"sub":["Namakkal","Rasipuram","Thiruchengode","Senthamangalam"],"sec":["Section - 1","Section - 2","Rasipuram","Semmedu - 1","Semmedu - 2"]},
-    "Erode":{"sub":["Erode","Bhavani","Perunthurai","Kodumudi"],"sec":["Section - 1","Section - 2","Kodumudi","Perundurai","Section - 3"]},
-    "Tiruchengode":{"sub":["Namakkal","Rasipuram","Thiruchengode","Senthamangalam"],"sec":["Thiruchengode","Pallipalayam","Section - 1","Section - 2","Section - 3"]},
-    "Bhavani":{"sub":["Erode","Bhavani","Perunthurai","Kodumudi"],"sec":["Bhavani","Anthiyur","Sathiyamangalam","Section - 1","Section - 2"]},
-    "Gobi":{"sub":["Gobichettipalayam","Sathiyamangalam","Thalavadi","Nambiyur"],"sec":["Gobi","Goundapadi","Section - 1","Section - 2","Nambiyur","Thalavadi","Bhavani"]},
-    "Tiruppur":{"sub":["Tiruppur North","Tiruppur South","Avinasi","Kangeyam","Palladam"],"sec":["Tiruppur North - 1","Tiruppur North - 2","Section - 1","Section - 2","Section - 3","Tiruppur South","Avinashi","Palladam"]},
-    "Kangeyam":{"sub":["Tiruppur North","Tiruppur South","Avinasi","Kangeyam","Palladam"],"sec":["Kangeyam","Mulanur","Vellakovil"]},
-    "Dharapuram":{"sub":["Dharapuram","Udumalaipettai","Madathukulam","Mulanur","Vellakoil"],"sec":["Dharapuram","Section - 1","Section - 2","Section - 3","Udumalaipettai","Madathukulam"]},
-    "Madurai-1":{"sub":["Madurai","Madurai West","Melur","Peraiyur","Thirumangalam","Usilampatti","Vadipatti"],"sec":["Section - 1","Section - 2","Section - 3","Section - 4","Section - 5","Melur","Vadipatti"]},
-    "Madurai-2":{"sub":["Madurai","Madurai West","Melur","Peraiyur","Thirumangalam","Usilampatti","Vadipatti"],"sec":["Theni","Thirumangalam","Usilampatti"]},
-    "Sivagangai":{"sub":["Sivagangai","Devakottai","Karaikudi","Manamadurai","Thirupathur"],"sec":["Section - 1","Section - 2","Manamadurai","Section - 3"]},
-    "Karaikudi":{"sub":["Sivagangai","Devakottai","Karaikudi","Manamadurai","Thirupathur"],"sec":["Karaikudi","Devakotaai","Thirupathur","Singampunari","Section - 1","Section - 2"]},
-    "Dindigul":{"sub":["Dindugal","Athoor","Kodaikanal","Natham","Vathalakundu"],"sec":["Dindigul","Natham","Vathalagundu","Athoor"]},
-    "Palani":{"sub":["Palani","Vedasandur","Oddanchatram"],"sec":["Palani","Section - 1","Section - 2","Section - 3","Section - 4","Kodaikanal","Perumalmalai"]},
-    "Oddanchathiram":{"sub":["Palani","Vedasandur","Oddanchatram"],"sec":["Section - 1","Section - 2","Vedasanthur","Vadamadurai","Section - 3"]},
-    "Theni":{"sub":["Theni","Andipatti","Bodi","Periyakulam","Uthamapalayam"],"sec":["Theni","Andipatti","Bodinayakanur","Uthamapalayam"]},
-    "Ramanathapuram":{"sub":["Ramanathapuram","Kamuthi","Mudukulathur","Paramakudi","Thiruvadanai"],"sec":["Ramnad","Thiruvadanai","Section - 1","Section - 2","Section - 3","Section - 4"]},
-    "Paramakudi":{"sub":["Ramanathapuram","Kamuthi","Mudukulathur","Paramakudi","Thiruvadanai"],"sec":["Palayamkottai","Section - 1","Section - 2","Section - 3"]},
-    "Kovilpatti":{"sub":["Thoothukudi","Kovilpatti","Ottapidaram","Sathankulam","Thiruvaikundam","Thiruchendur","Villathikulam"],"sec":["Section - 1","Section - 2","Ettayapuram"]},
-    "Virudhunagar":{"sub":["Virudhunagar","Aruppukottai","Rajapalayam","Sattur","Sivakasi","Srivilliputhur","Thiruchuzhi"],"sec":["Virudhunagar","Thiruchuli","Aruppukottai","Kariyapatti","Section - 1","Section - 3","Section - 4"]},
-    "Rajapalayam":{"sub":["Virudhunagar","Aruppukottai","Rajapalayam","Sattur","Sivakasi","Srivilliputhur","Thiruchuzhi"],"sec":["Rajapalayam","Srivilliputhur","Sivakasi","Saathur"]},
-    "Tenkasi":{"sub":["Tenkasi","Sankarankoil","Senkottai","Sivagiri"],"sec":["Thenkasi North","Thenkasi South","Senkottai","Sankarankoil","Sivakiri","Section - 1","Section - 2","Section - 3"]},
-    "Tirunelveli":{"sub":["Palayamkottai","Radhapuram","Ambasamudram","Nanguneri"],"sec":["Section - 1","Section - 2","Palayamkottai","Alangulam"]},
-    "Radhapuram":{"sub":["Palayamkottai","Radhapuram","Ambasamudram","Nanguneri"],"sec":["Section - 1","Section - 2","Valliyur","Nanguneri"]},
-    "Nagercoil":{"sub":["Nagerkovil","Thakkalai","Thovalai","Kuzhithurai"],"sec":["Nagercoil","Thovalai","Kuzhithurai","Thuckalay","Section - 1","Section - 2"]},
-    "Thoothukudi":{"sub":["Thoothukudi","Kovilpatti","Ottapidaram","Sathankulam","Thiruvaikundam","Thiruchendur","Villathikulam"],"sec":["Thoothukudi","Section - 1","Section - 2"]}};
-  var OTHER = '__other__';
-  /* Fill a list that also offers "Not in list"; the typed value lives in the text input #id */
-  function optsOther(id, items, placeholder, value) {
-    var sel = $('#' + id + 'Sel'), inp = $('#' + id);
-    sel.innerHTML = '<option value="">' + esc(placeholder) + '</option>' +
-      items.map(function (v) { return '<option value="' + esc(v) + '">' + esc(v) + '</option>'; }).join('') +
-      (items.length ? '<option value="' + OTHER + '">Not in list – type it</option>' : '');
-    sel.disabled = !items.length;
-    value = value || '';
-    if (items.indexOf(value) >= 0) { sel.value = value; inp.value = value; inp.hidden = true; }
-    else if (value && items.length) { sel.value = OTHER; inp.value = value; inp.hidden = false; }
-    else { sel.value = ''; inp.value = ''; inp.hidden = true; }
-  }
-  function setJuris(region, circle, division, subdivision, section) {
-    opts($('#region'), Object.keys(JURIS), 'Select region…', region);
-    var r = JURIS[$('#region').value];
-    opts($('#circle'), r ? Object.keys(r) : [], r ? 'Select circle…' : 'Select region first', circle);
-    var c = r && r[$('#circle').value];
-    opts($('#division'), c || [], c ? 'Select division…' : 'Select circle first', division);
-    var s = SUBSEC[$('#division').value] || { sub: [], sec: [] };
-    var hasDiv = !!$('#division').value;
-    optsOther('subdivision', s.sub, hasDiv ? 'Select sub-division…' : 'Select division first', subdivision);
-    optsOther('section', s.sec, hasDiv ? 'Select section…' : 'Select division first', section);
-  }
-  setJuris();
-  $('#region').addEventListener('change', function () { setJuris($('#region').value); });
-  $('#circle').addEventListener('change', function () { setJuris($('#region').value, $('#circle').value); });
-  $('#division').addEventListener('change', function () { setJuris($('#region').value, $('#circle').value, $('#division').value); });
-  ['subdivision', 'section'].forEach(function (id) {
-    var sel = $('#' + id + 'Sel'), inp = $('#' + id);
-    sel.addEventListener('change', function () {
-      sel.classList.remove('invalid');
-      if (sel.value === OTHER) { inp.value = ''; inp.hidden = false; inp.focus(); }
-      else { inp.value = sel.value; inp.hidden = true; }
-      inp.dispatchEvent(new Event('change'));
-    });
-  });
+  var LEVELS = ['region', 'circle', 'division', 'subdivision', 'section'];
+  var LABEL = { region: 'region', circle: 'circle', division: 'division', subdivision: 'sub-division', section: 'section' };
+  var ROWS = [];      // jurisdiction rows in this office's area: [region, circle, division, sub-division, section]
+  var FIXED = {};     // levels fixed by the login
+  var lists = { roads: [] };
   var FRESH_MS = 15 * 60 * 1000;
-  var lists = { hier: [], roads: [] };
   var stores = { newBefore: [], newAfter: [], updBefore: [], updAfter: [] };
   var selected = null;
+  function msg(id, t, cls) { var m = $(id); m.textContent = t; m.className = 'msg ' + (cls || ''); }
 
-  /* ---------- local memory (jurisdiction + name) ---------- */
-  function remember() {
-    try { var o = {}; LEVELS.concat(['enteredBy', 'mobile']).forEach(function (k) { o[k] = $('#' + k).value; }); localStorage.setItem('mw-defaults', JSON.stringify(o)); } catch (e) {}
-  }
-  function recall() {
+  /* ---------- per-office memory on this phone ---------- */
+  function memKey() { return 'hd-defaults:' + (session ? session.user.username : ''); }
+  function mem() { try { return JSON.parse(localStorage.getItem(memKey()) || '{}'); } catch (e) { return {}; } }
+  function remember(extra) {
     try {
-      var o = JSON.parse(localStorage.getItem('mw-defaults') || '{}');
-      setJuris(o.region, o.circle, o.division, o.subdivision, o.section);
-      ['enteredBy', 'mobile'].forEach(function (k) { $('#' + k).value = o[k] || ''; });
+      var o = mem();
+      LEVELS.forEach(function (k) { o[k] = $('#' + k).value; });
+      o.person = $('#person').value.trim(); o.mobile = $('#mobile').value.trim();
+      Object.keys(extra || {}).forEach(function (k) { o[k] = extra[k]; });
+      localStorage.setItem(memKey(), JSON.stringify(o));
     } catch (e) {}
+  }
+
+  /* ---------- jurisdiction dropdowns, driven by the rows for this office ---------- */
+  function uniq(a) { var s = {}, out = []; a.forEach(function (v) { if (!s[v]) { s[v] = 1; out.push(v); } }); return out; }
+  function setJuris(want) {
+    want = want || {};
+    var chosen = [];
+    LEVELS.forEach(function (k, i) {
+      var sel = $('#' + k);
+      var avail = chosen.length === i && !chosen.some(function (v) { return !v; })
+        ? uniq(ROWS.filter(function (r) { return chosen.every(function (v, j) { return r[j] === v; }); }).map(function (r) { return r[i]; }))
+        : [];
+      var prev = i ? LABEL[LEVELS[i - 1]] : '';
+      sel.innerHTML = '<option value="">' + (avail.length ? 'Select ' + LABEL[k] + '…' : 'Select ' + prev + ' first') + '</option>' +
+        avail.map(function (v) { return '<option value="' + esc(v) + '">' + esc(v) + '</option>'; }).join('');
+      var target = FIXED[k] || want[k] || '';
+      var hit = avail.filter(function (v) { return v.toLowerCase() === String(target).toLowerCase(); })[0];
+      if (!hit && avail.length === 1) hit = avail[0];
+      sel.value = hit || '';
+      sel.disabled = !!FIXED[k] || !avail.length;
+      chosen.push(sel.value);
+    });
+    fillRoads();
+  }
+  LEVELS.forEach(function (k, i) {
+    $('#' + k).addEventListener('change', function () {
+      var want = {};
+      LEVELS.slice(0, i + 1).forEach(function (x) { want[x] = $('#' + x).value; });
+      $('#' + k).classList.remove('invalid');
+      setJuris(want);
+    });
+  });
+  function fillRoads() {
+    var sec = $('#section').value, rs = {};
+    lists.roads.forEach(function (r) { if (!sec || r.section === sec) rs[r.road] = 1; });
+    $('#dl-road').innerHTML = Object.keys(rs).sort().map(function (v) { return '<option value="' + esc(v) + '">'; }).join('');
+  }
+  $('#road').addEventListener('change', function () {
+    var r = lists.roads.filter(function (x) { return x.road === $('#road').value; })[0];
+    if (!r) return;
+    if (!$('#roadNo').value && r.roadNo) $('#roadNo').value = r.roadNo;
+    var c = document.querySelector('input[name=cls][value="' + r.cls + '"]'); if (c && !document.querySelector('input[name=cls]:checked')) c.checked = true;
+  });
+  function loadLists() {
+    return run('getLists').then(function (l) {
+      ROWS = (l && l.rows) || []; lists.roads = (l && l.roads) || [];
+      setJuris(mem());
+    }).catch(function (e) { msg('#msgNew', 'Could not load the jurisdiction list: ' + e.message, 'err'); });
   }
 
   /* ---------- tabs ---------- */
   function tab(which) {
     $('#tabNew').classList.toggle('on', which === 'new');
     $('#tabUpd').classList.toggle('on', which === 'upd');
-    $('#fNew').hidden = which !== 'new'; $('#fUpd').hidden = which !== 'upd';
+    $('#tabOff').classList.toggle('on', which === 'off');
+    $('#fNew').hidden = which !== 'new'; $('#fUpd').hidden = which !== 'upd'; $('#fOff').hidden = which !== 'off';
   }
   $('#tabNew').onclick = function () { tab('new'); };
   $('#tabUpd').onclick = function () { tab('upd'); if (!listLoaded) search(); };
+  $('#tabOff').onclick = function () { tab('off'); if (!offLoaded) loadOffices(); };
 
   /* ---------- live GPS ---------- */
   var fix = null;
@@ -465,38 +484,12 @@ textarea{min-height:76px;resize:vertical}
   } else { setGps('GPS not supported', 'bad'); }
   function freshFix() { return fix && Date.now() - fix.at < 2 * 60 * 1000 ? fix : null; }
 
-  /* ---------- suggestions ---------- */
-  function fillLists() {
-    var val = function (id) { return $('#' + id).value.trim().toLowerCase(); };
-    LEVELS.forEach(function (lvl, i) {
-      var set = {};
-      lists.hier.forEach(function (r) {
-        for (var j = 0; j < i; j++) { if (val(LEVELS[j]) && String(r[j]).toLowerCase() !== val(LEVELS[j])) return; }
-        if (r[i]) set[r[i]] = 1;
-      });
-      $('#dl-' + lvl).innerHTML = Object.keys(set).sort().map(function (v) { return '<option value="' + esc(v) + '">'; }).join('');
-    });
-    var rs = {};
-    lists.roads.forEach(function (r) { if (!val('section') || String(r.section).toLowerCase() === val('section')) rs[r.road] = 1; });
-    $('#dl-road').innerHTML = Object.keys(rs).sort().map(function (v) { return '<option value="' + esc(v) + '">'; }).join('');
-  }
-  LEVELS.forEach(function (l) { $('#' + l).addEventListener('change', fillLists); });
-  $('#road').addEventListener('change', function () {
-    var r = lists.roads.filter(function (x) { return x.road === $('#road').value; })[0];
-    if (!r) return;
-    if (!$('#roadNo').value && r.roadNo) $('#roadNo').value = r.roadNo;
-    var c = document.querySelector('input[name=cls][value="' + r.cls + '"]'); if (c && !document.querySelector('input[name=cls]:checked')) c.checked = true;
-  });
-  function loadLists() { run('getLists').then(function (l) { lists = l || lists; fillLists(); }).catch(function () {}); }
-
   $('#nature').onchange = function () { $('#otherBox').hidden = $('#nature').value !== 'Others'; };
   function updLen() {
     var a = parseFloat($('#fromKm').value), b = parseFloat($('#toKm').value);
     $('#len').textContent = isFinite(a) && isFinite(b) && b >= a ? 'Length: ' + (b - a).toFixed(3) + ' km' : '';
   }
   $('#fromKm').oninput = $('#toKm').oninput = updLen;
-
-  /* Show the lakhs figure in full rupees (Indian grouping) so typing errors are easy to spot */
   function showLakhs(inputSel, hintSel) {
     var v = parseFloat($(inputSel).value);
     $(hintSel).textContent = isFinite(v) && v >= 0
@@ -505,6 +498,7 @@ textarea{min-height:76px;resize:vertical}
   }
   $('#estimate').addEventListener('input', function () { showLakhs('#estimate', '#estHint'); });
   $('#uestimate').addEventListener('input', function () { showLakhs('#uestimate', '#uestHint'); });
+
 
   /* ---------- photo boxes ---------- */
   function fmtTime(d) {
@@ -616,20 +610,15 @@ textarea{min-height:76px;resize:vertical}
     return 'MW-' + d.slice(0, 10).replace(/-/g, '') + '-' + d.slice(11, 19).replace(/:/g, '') + '-' + r;
   }
   function radio(name) { var r = document.querySelector('input[name=' + name + ']:checked'); return r ? r.value : ''; }
-  function msg(id, t, cls) { var m = $(id); m.textContent = t; m.className = 'msg ' + (cls || ''); }
   function gpsMissing(arr) { return arr.filter(function (p) { return !hasGps(p); }).length; }
 
-  /* ---------- submit new ---------- */
+  /* ---------- submit a new work ---------- */
   var savedWorkId = null;
   $('#fNew').addEventListener('submit', function (e) {
     e.preventDefault();
     document.querySelectorAll('.invalid').forEach(function (x) { x.classList.remove('invalid'); });
     var errs = [];
-    var need = function (id, label) {
-      if ($('#' + id).value.trim()) return;
-      var el = $('#' + id).hidden && $('#' + id + 'Sel') ? $('#' + id + 'Sel') : $('#' + id);
-      el.classList.add('invalid'); errs.push(label);
-    };
+    var need = function (id, label) { if (!$('#' + id).value.trim()) { $('#' + id).classList.add('invalid'); errs.push(label); } };
     need('region', 'C&M Region'); need('circle', 'Circle'); need('division', 'Division'); need('subdivision', 'Sub-Division'); need('section', 'Section');
     need('road', 'Name of the Road');
     if (!radio('cls')) { $('#segCls').classList.add('invalid'); errs.push('Classification'); }
@@ -643,68 +632,64 @@ textarea{min-height:76px;resize:vertical}
     if (!stores.newBefore.length) errs.push('a prior-to-repair photo');
     if (status === 'Complete' && !stores.newAfter.length) errs.push('an after-repair photo');
     var miss = gpsMissing(stores.newBefore.concat(stores.newAfter)); if (miss) errs.push('GPS for ' + miss + ' photo(s)');
-    need('enteredBy', 'Entered by');
+    if ($('#person').value.trim().length < 2) { $('#person').classList.add('invalid'); errs.push('Your name'); }
+    var mob = $('#mobile').value.replace(/\D/g, '');
+    if (mob && mob.length !== 10) { $('#mobile').classList.add('invalid'); errs.push('Mobile No. (10 digits)'); }
     if (errs.length) { msg('#msgNew', 'Still needed: ' + errs.join(', ') + '.', 'err'); return; }
 
     remember();
     var workId = savedWorkId || newWorkId(); savedWorkId = workId;
-    var info = { road: $('#road').value.trim(), roadNo: $('#roadNo').value.trim(), fromKm: a.toFixed(3), toKm: b.toFixed(3), section: $('#section').value.trim(), subdivision: $('#subdivision').value.trim() };
+    var info = { road: $('#road').value.trim(), roadNo: $('#roadNo').value.trim(), fromKm: a.toFixed(3), toKm: b.toFixed(3), section: $('#section').value, subdivision: $('#subdivision').value };
     var items = stores.newBefore.map(function (p) { return { p: p, phase: 'Before' }; }).concat(stores.newAfter.map(function (p) { return { p: p, phase: 'After' }; }));
     var btn = $('#saveNew'); btn.disabled = true;
     uploadAll(workId, items.filter(function (it) { return !it.p.uploaded; }), info, function (t) { msg('#msgNew', t); })
       .then(function () {
-        items.forEach(function (it) { it.p.uploaded = true; });
         msg('#msgNew', 'Saving the work…');
         return run('submitWork', {
-          workId: workId, region: $('#region').value, circle: $('#circle').value, division: $('#division').value, subdivision: $('#subdivision').value, section: $('#section').value,
+          workId: workId, region: $('#region').value, circle: $('#circle').value, division: $('#division').value,
+          subdivision: $('#subdivision').value, section: $('#section').value,
           road: info.road, roadNo: info.roadNo, cls: radio('cls'),
-          nature: $('#nature').value === 'Others' ? 'Others: ' +$('#natureOther').value.trim() : $('#nature').value,
-          fromKm: a, toKm: b, status: status, remarks: $('#remarks').value, enteredBy: $('#enteredBy').value, mobile: $('#mobile').value, estimate: $('#estimate').value
+          nature: $('#nature').value === 'Others' ? 'Others: ' + $('#natureOther').value.trim() : $('#nature').value,
+          fromKm: a, toKm: b, status: status, remarks: $('#remarks').value, estimate: est,
+          person: $('#person').value.trim(), mobile: mob
         });
       })
       .then(function (r) {
         msg('#msgNew', '');
         var box = document.createElement('div'); box.className = 'done';
-        box.innerHTML = '<strong>Work submitted.</strong><span>Note this Work ID to update the work later:</span><span class="id">' + esc(r.workId) + '</span>';
+        box.innerHTML = '<strong>Work submitted.</strong><span>Work ID for your records:</span><span class="id">' + esc(r.workId) + '</span>';
         $('#fNew').prepend(box); setTimeout(function () { box.remove(); }, 60000);
-        clearNew(true); window.scrollTo(0, 0); loadLists(); listLoaded = false;
+        clearNew(); window.scrollTo(0, 0); loadLists(); listLoaded = false;
       })
-      .catch(function (err) { msg('#msgNew', 'Not saved: ' + (err && err.message || err) + ' Check the connection and tap Submit again; photos already sent will not be sent twice.', 'err'); })
+      .catch(function (err) { msg('#msgNew', 'Not saved: ' + err.message + ' Check the connection and tap Submit again; photos already sent will not be sent twice.', 'err'); })
       .then(function () { btn.disabled = false; });
   });
 
-  /* keepJurisdiction: true after a successful submit (next entry is usually the same section).
-     Name and mobile are always kept. */
-  function clearNew(keepJurisdiction) {
-    var keep = { enteredBy: $('#enteredBy').value, mobile: $('#mobile').value };
-    if (keepJurisdiction) LEVELS.forEach(function (k) { keep[k] = $('#' + k).value; });
+  /* Keeps the jurisdiction and the person's name; clears the work details and photos. */
+  function clearNew() {
+    var keep = {}; LEVELS.forEach(function (k) { keep[k] = $('#' + k).value; });
+    var person = $('#person').value, mobile = $('#mobile').value;
     $('#fNew').reset();
-    setJuris(keep.region, keep.circle, keep.division, keep.subdivision, keep.section);
-    ['enteredBy', 'mobile'].forEach(function (k) { if (k in keep) $('#' + k).value = keep[k]; });
+    $('#person').value = person; $('#mobile').value = mobile;
+    setJuris(keep);
     stores.newBefore = []; stores.newAfter = []; renderBox('newBefore'); renderBox('newAfter');
     savedWorkId = null; $('#otherBox').hidden = true; updLen(); showLakhs('#estimate', '#estHint');
     document.querySelectorAll('.invalid').forEach(function (x) { x.classList.remove('invalid'); });
   }
-  $('#clearNew').onclick = function () {
-    clearNew(false);
-    try { var o = JSON.parse(localStorage.getItem('mw-defaults') || '{}'); LEVELS.forEach(function (k) { delete o[k]; }); localStorage.setItem('mw-defaults', JSON.stringify(o)); } catch (e) {}
-    window.scrollTo(0, 0);
-    msg('#msgNew', 'Form cleared.', 'ok');
-  };
+  $('#clearNew').onclick = function () { clearNew(); setJuris({}); msg('#msgNew', 'Form cleared.', 'ok'); };
+  ['#person', '#mobile'].forEach(function (id) { $(id).addEventListener('change', function () { remember(); }); });
+  $('#uperson').addEventListener('change', function () { remember({ person: $('#uperson').value.trim() }); });
 
-  /* ---------- update existing ---------- */
-  var found = [];
-  var statusFilter = '';
-  var listLoaded = false;
+  /* ---------- works list and update ---------- */
+  var found = [], statusFilter = '', listLoaded = false, canUpdate = false;
   function search() {
     listLoaded = true;
     $('#results').innerHTML = '<p class="hint">Loading works…</p>';
     $('#listInfo').textContent = '';
     run('findWorks', { q: $('#q').value, status: statusFilter, limit: 100 }).then(function (res) {
-      if (Array.isArray(res)) res = { works: res, matched: res.length }; // older Code.gs
-      found = (res && res.works) || [];
-      var n = (res && res.matched) || 0;
-      $('#listInfo').textContent = n ? (found.length < n ? 'Showing latest ' + found.length + ' of ' + n + ' works' : n + ' work' + (n > 1 ? 's' : '')) + (statusFilter ? ' · ' + statusFilter : '') : '';
+      found = res.works || []; canUpdate = !!res.canUpdate;
+      var n = res.matched || 0;
+      $('#listInfo').textContent = (n ? (found.length < n ? 'Showing latest ' + found.length + ' of ' + n + ' works' : n + ' work' + (n > 1 ? 's' : '')) + (statusFilter ? ' · ' + statusFilter : '') + ' · ' : 'Showing ') + res.scope;
       $('#results').innerHTML = found.length ? found.map(function (w, i) {
         return '<button type="button" class="res" data-i="' + i + '">' +
           '<span class="top"><strong>' + esc(w.road) + (w.roadNo ? ' <span class="hint">(' + esc(w.roadNo) + ')</span>' : '') + '</strong>' +
@@ -713,8 +698,8 @@ textarea{min-height:76px;resize:vertical}
           '<span class="hint">' + esc(w.section) + ' · ' + esc(w.subdivision) + ' · ' + esc(w.division) + '</span>' +
           '<span class="meta2 hint"><span class="k">' + esc(w.workId) + '</span><span>' + (w.estimate ? 'Est. ₹' + esc(w.estimate) + ' L · ' : '') + 'Photos ' + w.beforeCount + ' before / ' + w.afterCount + ' after · ' + esc(w.updated) + '</span></span>' +
           '</button>';
-      }).join('') : '<p class="hint">' + ($('#q').value || statusFilter ? 'No works match this filter.' : 'No works captured yet. Submitted works will be listed here.') + '</p>';
-    }).catch(function (err) { $('#results').innerHTML = '<p class="hint" style="color:var(--danger)">Could not load works: ' + esc(err && err.message || err) + '</p>'; });
+      }).join('') : '<p class="hint">' + ($('#q').value || statusFilter ? 'No works match this filter.' : 'No works captured yet in your area.') + '</p>';
+    }).catch(function (err) { $('#results').innerHTML = '<p class="hint" style="color:var(--danger)">Could not load works: ' + esc(err.message) + '</p>'; });
   }
   $('#statusChips').addEventListener('click', function (e) {
     var c = e.target.closest('[data-st]'); if (!c) return;
@@ -731,30 +716,35 @@ textarea{min-height:76px;resize:vertical}
     stores.updBefore = []; stores.updAfter = []; renderBox('updBefore'); renderBox('updAfter');
     $('#updSummary').innerHTML = '<strong>' + esc(selected.road) + (selected.roadNo ? ' (' + esc(selected.roadNo) + ')' : '') + '</strong>' +
       '<span>Km ' + esc(selected.fromKm) + '–' + esc(selected.toKm) + ' · ' + esc(selected.nature) + '</span>' +
-      '<span>Section: ' + esc(selected.section) + ' · Sub-Division: ' + esc(selected.subdivision) + ' · Division: ' + esc(selected.division) + '</span>' +
-      '<span>Now: <strong>' + esc(selected.status) + '</strong> · Photos: ' + selected.beforeCount + ' before, ' + selected.afterCount + ' after · Updated ' + esc(selected.updated) + '</span>';
+      '<span>Section ' + esc(selected.section) + ' · Sub-Division ' + esc(selected.subdivision) + ' · Division ' + esc(selected.division) + '</span>' +
+      '<span>Now: <strong>' + esc(selected.status) + '</strong>' + (selected.estimate ? ' · Est. ₹' + esc(selected.estimate) + ' lakhs' : '') + ' · Photos: ' + selected.beforeCount + ' before, ' + selected.afterCount + ' after</span>' +
+      '<span class="hint">Entered by ' + esc(selected.enteredBy) + (selected.updatedBy ? ' · last updated by ' + esc(selected.updatedBy) : '') + ' · ' + esc(selected.updated) + '</span>' +
+      (selected.remarks ? '<span class="hint">Remarks: ' + esc(selected.remarks) + '</span>' : '');
+    $('#viewOnly').hidden = canUpdate; $('#updEdit').hidden = !canUpdate;
     var r = document.querySelector('input[name=ustatus][value="' + selected.status + '"]'); if (r) r.checked = true;
     $('#uremarks').value = selected.remarks || '';
     $('#uestimate').value = selected.estimate ? String(selected.estimate).replace(/,/g, '') : ''; showLakhs('#uestimate', '#uestHint');
+    $('#uperson').value = $('#uperson').value || mem().person || '';
     $('#updBody').hidden = false; msg('#msgUpd', '');
     $('#updBody').scrollIntoView({ behavior: 'smooth' });
   });
   $('#fUpd').addEventListener('submit', function (e) {
     e.preventDefault();
-    if (!selected) return;
+    if (!selected || !canUpdate) return;
     var status = radio('ustatus'); var errs = [];
     if (!status) errs.push('Status of work');
     if (status === 'Complete' && !selected.afterCount && !stores.updAfter.length) errs.push('an after-repair photo');
     var miss = gpsMissing(stores.updBefore.concat(stores.updAfter)); if (miss) errs.push('GPS for ' + miss + ' photo(s)');
+    var person = $('#uperson').value.trim(); if (person.length < 2) errs.push('your name');
     if (errs.length) { msg('#msgUpd', 'Still needed: ' + errs.join(', ') + '.', 'err'); return; }
+    remember({ person: person });
     var info = { road: selected.road, roadNo: selected.roadNo, fromKm: Number(selected.fromKm).toFixed(3), toKm: Number(selected.toKm).toFixed(3), section: selected.section, subdivision: selected.subdivision };
     var items = stores.updBefore.map(function (p) { return { p: p, phase: 'Before' }; }).concat(stores.updAfter.map(function (p) { return { p: p, phase: 'After' }; }));
     var btn = $('#saveUpd'); btn.disabled = true;
     uploadAll(selected.workId, items.filter(function (it) { return !it.p.uploaded; }), info, function (t) { msg('#msgUpd', t); })
       .then(function () {
-        items.forEach(function (it) { it.p.uploaded = true; });
         msg('#msgUpd', 'Saving…');
-        return run('updateWork', { workId: selected.workId, status: status, remarks: $('#uremarks').value, estimate: $('#uestimate').value });
+        return run('updateWork', { workId: selected.workId, status: status, remarks: $('#uremarks').value, estimate: $('#uestimate').value, person: person });
       })
       .then(function () {
         msg('#msgUpd', '');
@@ -762,12 +752,185 @@ textarea{min-height:76px;resize:vertical}
         stores.updBefore = []; stores.updAfter = []; renderBox('updBefore'); renderBox('updAfter');
         selected = null; $('#updBody').hidden = true; search();
       })
-      .catch(function (err) { msg('#msgUpd', 'Not saved: ' + (err && err.message || err) + ' Tap Save update again.', 'err'); })
+      .catch(function (err) { msg('#msgUpd', 'Not saved: ' + err.message + ' Tap Save update again.', 'err'); })
       .then(function () { btn.disabled = false; });
   });
 
-  /* ---------- boot ---------- */
-  recall(); loadLists(); updLen();
+  /* ---------- manage offices ---------- */
+  var OFFICES = [], offFilter = '', offLoaded = false;
+  var ACTION = { 'Not activated': 'Activate', 'Code issued': 'New code', 'Active': 'Reset' };
+  function loadOffices() {
+    offLoaded = true;
+    $('#offList').innerHTML = '<p class="hint">Loading offices…</p>';
+    return run('listOffices').then(function (r) { OFFICES = r.offices || []; renderOffices(); })
+      .catch(function (e) { $('#offList').innerHTML = '<p class="hint" style="color:var(--danger)">Could not load offices: ' + esc(e.message) + '</p>'; });
+  }
+  function shownOffices() {
+    var q = $('#offQ').value.trim().toLowerCase();
+    return OFFICES.filter(function (o) {
+      return (!offFilter || o.status === offFilter) && (!q || (o.office + ' ' + o.username + ' ' + o.path + ' ' + o.level).toLowerCase().indexOf(q) >= 0);
+    });
+  }
+  function renderOffices() {
+    var list = shownOffices();
+    var count = function (s) { return OFFICES.filter(function (o) { return o.status === s; }).length; };
+    $('#offInfo').textContent = OFFICES.length + ' offices · ' + count('Active') + ' active · ' + count('Code issued') + ' code issued · ' + count('Not activated') + ' not activated';
+    var pending = list.filter(function (o) { return o.status === 'Not activated'; });
+    var bb = $('#bulkBtn');
+    bb.hidden = pending.length < 2; bb.dataset.confirm = ''; bb.textContent = 'Activate all ' + pending.length + ' shown';
+    $('#offList').innerHTML = list.length ? list.map(function (o) {
+      var act = ACTION[o.status];
+      return '<div class="off" data-u="' + esc(o.username) + '">' +
+        '<div class="off-main"><span><strong>' + esc(o.office) + '</strong> <span class="pill">' + esc(o.level) + '</span></span>' +
+        (o.path ? '<span class="hint">' + esc(o.path) + '</span>' : '') +
+        '<span class="k">' + esc(o.username) + '</span>' +
+        '<span class="hint"><span class="pill os-' + esc(o.status.replace(/\s+/g, '-')) + '">' + esc(o.status) + '</span>' +
+        (o.codeValidTill ? ' code valid till ' + esc(o.codeValidTill) : '') + (o.lastSignIn ? ' · last sign-in ' + esc(o.lastSignIn) : '') + '</span></div>' +
+        (act ? '<button type="button" class="btn sm' + (act === 'Reset' ? '' : ' primary') + '" data-act="' + esc(o.username) + '" data-kind="' + act + '">' + act + '</button>' : '') +
+        '</div>';
+    }).join('') : '<p class="hint">No offices match.</p>';
+  }
+  $('#offChips').addEventListener('click', function (e) {
+    var c = e.target.closest('[data-os]'); if (!c) return;
+    document.querySelectorAll('#offChips .chip').forEach(function (x) { x.classList.toggle('on', x === c); });
+    offFilter = c.dataset.os; renderOffices();
+  });
+  $('#offQ').addEventListener('input', renderOffices);
+  $('#offRefresh').onclick = loadOffices;
+  /* Reset and bulk activation ask for a second tap (no pop-up dialogs). */
+  function armed(btn, label) {
+    if (btn.dataset.confirm === '1') return true;
+    btn.dataset.confirm = '1'; btn.dataset.label = btn.textContent; btn.textContent = label;
+    setTimeout(function () { if (btn.isConnected && btn.dataset.confirm === '1') { btn.dataset.confirm = ''; btn.textContent = btn.dataset.label; } }, 5000);
+    return false;
+  }
+  $('#offList').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]'); if (!b) return;
+    if (b.dataset.kind === 'Reset' && !armed(b, 'Tap again to reset')) return;
+    issue([b.dataset.act], b);
+  });
+  $('#bulkBtn').onclick = function () {
+    var names = shownOffices().filter(function (o) { return o.status === 'Not activated'; }).map(function (o) { return o.username; });
+    if (!names.length || !armed(this, 'Tap again: ' + names.length + ' codes')) return;
+    issue(names.slice(0, 100), this);
+  };
+  function issue(names, btn) {
+    btn.disabled = true; msg('#msgOff', 'Issuing ' + names.length + ' code' + (names.length > 1 ? 's' : '') + '…');
+    run('issueCodes', { usernames: names, person: mem().person || '' }).then(function (r) {
+      var ok = r.issued.filter(function (i) { return i.code; }), bad = r.issued.filter(function (i) { return i.error; });
+      msg('#msgOff', bad.length ? bad.length + ' not issued: ' + bad.map(function (i) { return (i.office || i.username) + ' (' + i.error + ')'; }).join(', ') : '', bad.length ? 'err' : '');
+      if (ok.length) showCodes(ok);
+      return loadOffices();
+    }).catch(function (e) { msg('#msgOff', e.message, 'err'); })
+      .then(function () { btn.disabled = false; });
+  }
+  function showCodes(list) {
+    $('#codesList').innerHTML = list.map(function (i) {
+      return '<div class="code-row"><span><strong>' + esc(i.office) + '</strong> <span class="hint">' + esc(i.level) + '</span><br><span class="k">' + esc(i.username) + '</span></span>' +
+        '<span class="code">' + esc(i.code.slice(0, 3) + ' ' + i.code.slice(3)) + '</span></div>';
+    }).join('');
+    var head = 'HD Maintenance app' + (APP_LINK ? ': ' + APP_LINK : '') + '\nSign in with your username and the one-time code as the password, then set your own password.\n';
+    $('#codesText').value = head + list.map(function (i) {
+      return '\n' + i.office + ' (' + i.level + ')\nUsername: ' + i.username + '\nOne-time code: ' + i.code + '\nValid till: ' + i.validTill;
+    }).join('\n');
+    $('#codesBox').hidden = false; msg('#msgCodes', '');
+    $('#codesBox').scrollIntoView({ behavior: 'smooth' });
+  }
+  $('#codesClose').onclick = function () { $('#codesBox').hidden = true; $('#codesText').value = ''; $('#codesList').innerHTML = ''; };
+  $('#copyCodes').onclick = function () {
+    var t = $('#codesText');
+    var done = function () { msg('#msgCodes', 'Copied. Paste into WhatsApp or SMS.', 'ok'); };
+    var fallback = function () { t.focus(); t.select(); try { document.execCommand('copy'); done(); } catch (e) { msg('#msgCodes', 'Select the text above and copy it.', 'err'); } };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t.value).then(done, fallback); else fallback();
+  };
+
+  /* ---------- sign-in, password ---------- */
+  function saveSession() { try { localStorage.setItem('hd-session-v2', JSON.stringify(session)); } catch (e) {} }
+  function show(which) {
+    $('#fLogin').hidden = which !== 'login'; $('#fSetPw').hidden = which !== 'setpw';
+    var app = which === 'app';
+    $('#appBar').hidden = !app; $('#userBar').hidden = !app;
+    if (!app) { $('#fNew').hidden = true; $('#fUpd').hidden = true; $('#fOff').hidden = true; }
+  }
+  function applySession(s) {
+    session = s; setupToken = null;
+    var u = s.user;
+    FIXED = u.fixed || {};
+    $('#userInfo').innerHTML = '<strong>' + esc(u.office) + '</strong> · ' + esc(u.level) + ' · <span class="k">' + esc(u.username) + '</span>';
+    $('#tabNew').hidden = !u.rights.enter; $('#tabOff').hidden = !u.rights.manage;
+    $('#gps').hidden = !(u.rights.enter || u.rights.update);
+    var m = mem();
+    $('#person').value = m.person || ''; $('#mobile').value = m.mobile || ''; $('#uperson').value = m.person || '';
+    found = []; selected = null; listLoaded = false; offLoaded = false; OFFICES = [];
+    $('#updBody').hidden = true; $('#codesBox').hidden = true;
+    show('app');
+    if (u.rights.enter) { clearNew(); loadLists(); tab('new'); }
+    else { tab('upd'); search(); }
+  }
+  function signOut(message) {
+    session = null; FIXED = {}; ROWS = [];
+    try { localStorage.removeItem('hd-session-v2'); } catch (e) {}
+    stores.newBefore = []; stores.newAfter = []; stores.updBefore = []; stores.updAfter = [];
+    $('#loginPw').value = '';
+    show('login');
+    msg('#msgLogin', message || '', message ? 'err' : '');
+  }
+  $('#signOutBtn').onclick = function () { signOut(''); };
+  $('#fLogin').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var u = $('#loginUser').value.trim(), pw = $('#loginPw').value;
+    if (!u || !pw) { msg('#msgLogin', 'Enter your office username and password.', 'err'); return; }
+    var btn = $('#loginBtn'); btn.disabled = true; msg('#msgLogin', 'Signing in…');
+    run('login', { username: u, password: pw }).then(function (res) {
+      msg('#msgLogin', '');
+      if (res.setPassword) { setupToken = res.setupToken; openSetPw('first', res.username); }
+      else { applySession(res); saveSession(); }
+    }).catch(function (err) { msg('#msgLogin', err.message, 'err'); })
+      .then(function () { btn.disabled = false; });
+  });
+  function openSetPw(mode, username) {
+    $('#fSetPw').dataset.mode = mode;
+    $('#newPw').value = ''; $('#newPw2').value = ''; $('#curPw').value = '';
+    $('#curPwBox').hidden = mode !== 'change'; $('#setPwCancel').hidden = mode !== 'change';
+    $('#setPwTitle').textContent = mode === 'change' ? 'Change password' : 'Set your password';
+    $('#setPwIntro').textContent = mode === 'change'
+      ? 'Other phones signed in to this office will be signed out.'
+      : 'Code accepted for ' + username + '. Set the password your office will use from now on. The code stops working once you save.';
+    msg('#msgSetPw', '');
+    if (mode === 'change') { $('#appBar').hidden = true; $('#fNew').hidden = true; $('#fUpd').hidden = true; $('#fOff').hidden = true; $('#fLogin').hidden = true; $('#fSetPw').hidden = false; }
+    else show('setpw');
+  }
+  $('#changePwBtn').onclick = function () { openSetPw('change'); };
+  $('#setPwCancel').onclick = function () { $('#fSetPw').hidden = true; applySession(session); };
+  $('#fSetPw').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var p1 = $('#newPw').value, p2 = $('#newPw2').value, mode = this.dataset.mode;
+    if (p1.length < 8) { msg('#msgSetPw', 'Password must be at least 8 characters.', 'err'); return; }
+    if (p1 !== p2) { msg('#msgSetPw', 'The two passwords do not match.', 'err'); return; }
+    var btn = $('#setPwBtn'); btn.disabled = true; msg('#msgSetPw', 'Saving…');
+    var call = mode === 'change'
+      ? run('changePassword', { current: $('#curPw').value, newPassword: p1, person: mem().person || '' })
+      : run('setPassword', { setupToken: setupToken, newPassword: p1 });
+    call.then(function (res) {
+      $('#fSetPw').hidden = true;
+      applySession(res); saveSession();
+      msg(res.user.rights.enter ? '#msgNew' : '#msgUpd', mode === 'change' ? 'Password changed.' : 'Password saved. Your office is now active.', 'ok');
+    }).catch(function (err) { msg('#msgSetPw', err.message, 'err'); })
+      .then(function () { btn.disabled = false; });
+  });
+
+  /* ---------- start ---------- */
+  updLen();
+  var stored = null;
+  try { stored = JSON.parse(localStorage.getItem('hd-session-v2') || 'null'); } catch (e) { stored = null; }
+  if (stored && stored.token && stored.user) {
+    applySession(stored);
+    run('me').then(function (u) {
+      if (session && JSON.stringify(u) !== JSON.stringify(session.user)) { session.user = u; saveSession(); applySession(session); }
+    }).catch(function () { /* signOut() already ran if the sign-in is no longer valid */ });
+  } else {
+    show('login');
+  }
 })();
 </script>
 </body>
