@@ -1,5 +1,5 @@
 // Keeps the app screen available on weak signal. Data is always sent live to Google Sheets.
-const CACHE = 'hd-maintenance-v1';
+const CACHE = 'hd-maintenance-v3';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
 
 self.addEventListener('install', e => {
