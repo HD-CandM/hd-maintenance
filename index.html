@@ -111,6 +111,52 @@ input[readonly]{background:var(--sunk)}
 .code{font:600 1.35rem var(--mono);letter-spacing:.08em;white-space:nowrap}
 #codesText{font:500 .8rem var(--mono)}
 .login{max-width:440px}
+/* ---- dashboard ---- */
+:root{--st1:#86b6ef;--st2:#5598e7;--st3:#256abf;--st4:#104281;--bar:#2a78d6;--track:#edf0ec;--tip-bg:#16201a;--tip-fg:#ffffff}
+@media (prefers-color-scheme: dark){:root{--st1:#184f95;--st2:#2a78d6;--st3:#6da7ec;--st4:#b7d3f6;--bar:#3987e5;--track:#222c25;--tip-bg:#e6ece7;--tip-fg:#101512}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.dash{gap:18px}
+.dash-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.dash-head h2{margin:0;font:600 1.15rem var(--display)}
+.dash-filters{display:flex;gap:8px;align-items:center}
+.dash-filters select{width:auto;min-width:150px}
+#dashBody{display:grid;gap:18px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:2px;min-width:0}
+.kpi-label{font-size:.8rem;color:var(--muted);font-weight:600}
+.kpi-val{font:700 clamp(1.2rem,5vw,1.6rem)/1.15 var(--display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpi-val small{font-size:.6em;font-weight:600;margin-left:2px}
+#msgDash:empty{display:none}
+.kpi-sub{font-size:.8rem;color:var(--muted)}
+.panel{display:grid;gap:10px;min-width:0}
+.panel h3{margin:0;font:600 1rem var(--display)}
+.panel.two{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px}
+.panel.two>div{display:grid;gap:10px;align-content:start;min-width:0}
+.stagebar{display:flex;gap:2px;height:22px;border-radius:4px;overflow:hidden;background:var(--track)}
+.stagebar span{display:block;height:100%;min-width:3px;cursor:default}
+.stagebar.mini{height:10px;width:110px;border-radius:3px}
+.s1{background:var(--st1)}.s2{background:var(--st2)}.s3{background:var(--st3)}.s4{background:var(--st4)}
+.legend{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.88rem}
+.legend li{display:flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.legend b{font-variant-numeric:tabular-nums}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.dtable{border-collapse:collapse;width:100%;min-width:560px;font-size:.9rem}
+.dtable th,.dtable td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.dtable th{font-size:.78rem;color:var(--muted);font-weight:600;background:var(--sunk)}
+.dtable tr:last-child td{border-bottom:0}
+.dtable .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dtable td.zero{color:var(--muted)}
+.dtable tfoot td{font-weight:700;background:var(--sunk)}
+.hbars{display:grid;gap:8px}
+.hbar{display:grid;grid-template-columns:minmax(110px,38%) 1fr;gap:10px;align-items:center;font-size:.88rem}
+.hbar .nm{overflow-wrap:anywhere;line-height:1.25}
+.hbar .track{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;min-width:0}
+.hbar .area{display:block;min-width:0}
+.hbar .fill{display:block;height:14px;background:var(--bar);border-radius:0 4px 4px 0;min-width:2px;cursor:default}
+.hbar .val{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted);font-size:.82rem}
+.tip{position:fixed;z-index:20;pointer-events:none;background:var(--tip-bg);color:var(--tip-fg);font-size:.8rem;line-height:1.35;padding:6px 9px;border-radius:6px;max-width:240px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -128,6 +174,7 @@ input[readonly]{background:var(--sunk)}
     </div>
     <div class="bar" id="appBar" hidden>
       <div class="tabs">
+        <button type="button" id="tabDash">Dashboard</button>
         <button type="button" id="tabNew">New work</button>
         <button type="button" id="tabUpd">Works</button>
         <button type="button" id="tabOff">Manage offices</button>
@@ -320,6 +367,55 @@ input[readonly]{background:var(--sunk)}
     </div>
   </form>
 
+  <!-- ================= DASHBOARD ================= -->
+  <section id="fDash" class="card dash" hidden>
+    <div class="dash-head">
+      <div><h2 id="dashTitle">Dashboard</h2><p class="hint" id="dashAsOf"></p></div>
+      <div class="dash-filters">
+        <label for="dashFy" class="sr">Financial year</label>
+        <select id="dashFy" aria-label="Financial year"></select>
+        <button type="button" class="btn sm" id="dashRefresh">Refresh</button>
+      </div>
+    </div>
+    <p class="msg" id="msgDash" role="status" aria-live="polite"></p>
+    <div id="dashBody" hidden>
+      <div class="kpis">
+        <div class="kpi"><span class="kpi-label">Works</span><span class="kpi-val" id="kWorks"></span><span class="kpi-sub" id="kWorksSub"></span></div>
+        <div class="kpi"><span class="kpi-label">Estimate amount</span><span class="kpi-val" id="kAmt"></span><span class="kpi-sub" id="kAmtSub"></span></div>
+        <div class="kpi"><span class="kpi-label">Road length covered</span><span class="kpi-val" id="kKm"></span><span class="kpi-sub" id="kKmSub"></span></div>
+        <div class="kpi"><span class="kpi-label">Completed</span><span class="kpi-val" id="kDone"></span><span class="kpi-sub" id="kDoneSub"></span></div>
+      </div>
+
+      <div class="panel">
+        <h3>Stage of works</h3>
+        <div class="stagebar" id="stageBar" role="img"></div>
+        <ul class="legend" id="stageLegend"></ul>
+      </div>
+
+      <div class="panel">
+        <h3 id="childTitle">By office</h3>
+        <div class="tablebox">
+          <table class="dtable">
+            <thead><tr><th id="childCol">Office</th><th class="num">Works</th><th class="num">Est. (₹ L)</th><th class="num">Km</th><th>Stage</th><th class="num">Complete</th></tr></thead>
+            <tbody id="childRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel two">
+        <div>
+          <h3>Nature of work <span class="hint">by estimate amount</span></h3>
+          <div class="hbars" id="natureBars"></div>
+        </div>
+        <div>
+          <h3>Road class <span class="hint">by estimate amount</span></h3>
+          <div class="hbars" id="classBars"></div>
+        </div>
+      </div>
+    </div>
+    <div class="tip" id="tip" role="tooltip" hidden></div>
+  </section>
+
   <!-- ================= MANAGE OFFICES ================= -->
   <section id="fOff" class="card" hidden>
     <fieldset>
@@ -359,7 +455,7 @@ input[readonly]{background:var(--sunk)}
 
   /* ====== SETTING: when this page is hosted outside Apps Script (e.g. GitHub Pages),
      paste your Apps Script Web app URL (ending in /exec) between the quotes. ====== */
-  var API_URL = 'https://script.google.com/macros/s/AKfycbylba9zDO8y6yGgFsZCQE2U4y4mQkzLiTwtztTEI_lETFS0-oK8WFnjEDr4hjbAi4c8/exec';
+  var API_URL = 'https://script.google.com/macros/s/AKfycbzrHjVH5ixTn5qyZ4r-Va8e17Va5WYJvBW4X04BbWs4drThpyLIDvZN95wxqDAkkpEj/exec';
 
   var IN_APPS_SCRIPT = !!(window.google && google.script && google.script.run);
   var session = null;   // {token, user}
@@ -462,11 +558,14 @@ input[readonly]{background:var(--sunk)}
 
   /* ---------- tabs ---------- */
   function tab(which) {
+    $('#tabDash').classList.toggle('on', which === 'dash');
     $('#tabNew').classList.toggle('on', which === 'new');
     $('#tabUpd').classList.toggle('on', which === 'upd');
     $('#tabOff').classList.toggle('on', which === 'off');
+    $('#fDash').hidden = which !== 'dash';
     $('#fNew').hidden = which !== 'new'; $('#fUpd').hidden = which !== 'upd'; $('#fOff').hidden = which !== 'off';
   }
+  $('#tabDash').onclick = function () { tab('dash'); if (!dashLoaded) loadDash(); };
   $('#tabNew').onclick = function () { tab('new'); };
   $('#tabUpd').onclick = function () { tab('upd'); if (!listLoaded) search(); };
   $('#tabOff').onclick = function () { tab('off'); if (!offLoaded) loadOffices(); };
@@ -844,13 +943,108 @@ input[readonly]{background:var(--sunk)}
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t.value).then(done, fallback); else fallback();
   };
 
+  /* ---------- dashboard ---------- */
+  var dashLoaded = false, dashFy = '';
+  var STAGES = ['Estimate', 'Tender', 'In Progress', 'Complete'];
+  var nf = function (n, d) { return Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); };
+  var fyLabel = function (y) { return y === 'all' ? 'All years' : 'FY ' + y + '–' + String(y + 1).slice(2); };
+  var pct = function (a, b) { return b ? Math.round(a * 100 / b) : 0; };
+  function loadDash() {
+    dashLoaded = true;
+    msg('#msgDash', 'Loading…');
+    return run('getDashboard', { fy: dashFy || undefined }).then(function (d) {
+      msg('#msgDash', '');
+      renderDash(d);
+    }).catch(function (e) { msg('#msgDash', 'Could not load the dashboard: ' + e.message, 'err'); });
+  }
+  $('#dashRefresh').onclick = loadDash;
+  $('#dashFy').addEventListener('change', function () { dashFy = this.value === 'all' ? 'all' : Number(this.value); loadDash(); });
+
+  /* a stacked stage bar; data-tip on each segment for hover / tap */
+  function stageBar(st, total, mini) {
+    if (!total) return '<div class="stagebar' + (mini ? ' mini' : '') + '" aria-label="No works"></div>';
+    return '<div class="stagebar' + (mini ? ' mini' : '') + '" aria-label="' + STAGES.map(function (s) { return s + ' ' + st[s]; }).join(', ') + '">' +
+      STAGES.map(function (s, i) {
+        return st[s] ? '<span class="s' + (i + 1) + '" style="flex:' + st[s] + '" data-tip="' + esc(s + ': ' + st[s] + ' work' + (st[s] > 1 ? 's' : '') + ' (' + pct(st[s], total) + '%)') + '"></span>' : '';
+      }).join('') + '</div>';
+  }
+  function hbars(list, empty) {
+    var max = Math.max.apply(null, list.map(function (x) { return x.amount; }).concat([0]));
+    var rows = list.filter(function (x) { return x.works; });
+    if (!rows.length) return '<p class="hint">' + empty + '</p>';
+    return rows.map(function (x) {
+      var w = max ? Math.max(1, x.amount * 100 / max) : 0;
+      var tip = x.name + ': ' + nf(x.works) + ' work' + (x.works > 1 ? 's' : '') + ', ₹' + nf(x.amount, 2) + ' L, ' + nf(x.km, 1) + ' km';
+      return '<div class="hbar"><span class="nm">' + esc(x.name) + '</span><span class="track">' +
+        '<span class="area"><span class="fill" style="width:' + w + '%" data-tip="' + esc(tip) + '"></span></span>' +
+        '<span class="val">₹' + nf(x.amount, 2) + ' L · ' + nf(x.works) + '</span></span></div>';
+    }).join('');
+  }
+  function renderDash(d) {
+    dashFy = d.fy;
+    $('#dashTitle').textContent = 'Dashboard · ' + (d.level === 'HQ' ? 'All regions' : d.office + ' ' + d.level);
+    $('#dashAsOf').textContent = fyLabel(d.fy) + ' · works by date entered · as of ' + d.asOf;
+    $('#dashFy').innerHTML = d.fys.map(function (y) { return '<option value="' + y + '"' + (y === d.fy ? ' selected' : '') + '>' + fyLabel(y) + '</option>'; }).join('') +
+      '<option value="all"' + (d.fy === 'all' ? ' selected' : '') + '>All years</option>';
+    var t = d.total;
+    $('#dashBody').hidden = false;
+    $('#kWorks').textContent = nf(t.works);
+    $('#kWorksSub').textContent = t.works ? nf(t.status['In Progress']) + ' in progress' : 'none entered yet';
+    $('#kAmt').innerHTML = '₹' + nf(t.amount, 2) + '<small>L</small>';
+    $('#kAmtSub').textContent = t.amount >= 100 ? '≈ ₹' + nf(t.amount / 100, 2) + ' crore' : 'estimated';
+    $('#kKm').innerHTML = nf(t.km, 1) + '<small>km</small>';
+    $('#kKmSub').textContent = nf(t.kmDone, 1) + ' km completed';
+    $('#kDone').textContent = pct(t.status.Complete, t.works) + '%';
+    $('#kDoneSub').textContent = nf(t.status.Complete) + ' of ' + nf(t.works) + ' work' + (t.works === 1 ? '' : 's');
+
+    $('#stageBar').outerHTML = stageBar(t.status, t.works).replace('class="stagebar"', 'class="stagebar" id="stageBar" role="img"');
+    $('#stageLegend').innerHTML = STAGES.map(function (s, i) {
+      return '<li><i class="s' + (i + 1) + '"></i>' + s + ' <b>' + nf(t.status[s]) + '</b> <span class="hint">' + pct(t.status[s], t.works) + '%</span></li>';
+    }).join('');
+
+    $('#childTitle').textContent = 'By ' + d.childLabel.toLowerCase() + (d.childLabel === 'Road' ? '' : ' under ' + (d.level === 'HQ' ? 'HQ' : d.office));
+    $('#childCol').textContent = d.childLabel;
+    $('#childRows').innerHTML = d.children.length ? d.children.map(function (c) {
+      var z = c.works ? '' : ' zero';
+      return '<tr><td class="' + z + '">' + esc(c.name) + '</td><td class="num' + z + '">' + nf(c.works) + '</td><td class="num' + z + '">' + nf(c.amount, 2) + '</td>' +
+        '<td class="num' + z + '">' + nf(c.km, 1) + '</td><td>' + stageBar(c.status, c.works, true) + '</td>' +
+        '<td class="num' + z + '">' + (c.works ? pct(c.status.Complete, c.works) + '%' : '–') + '</td></tr>';
+    }).join('') + (d.children.length > 1 ? '<tr class="tot"><td><strong>Total</strong></td><td class="num"><strong>' + nf(t.works) + '</strong></td><td class="num"><strong>' + nf(t.amount, 2) + '</strong></td><td class="num"><strong>' + nf(t.km, 1) + '</strong></td><td></td><td class="num"><strong>' + pct(t.status.Complete, t.works) + '%</strong></td></tr>' : '')
+      : '<tr><td colspan="6" class="zero">No works entered in ' + fyLabel(d.fy) + ' yet.</td></tr>';
+
+    $('#natureBars').innerHTML = hbars(d.nature, 'No works in this period.');
+    $('#classBars').innerHTML = hbars(d.classes.map(function (c) { return Object.assign({}, c, { name: c.name + ' (' + { SH: 'State Highway', MDR: 'Major District Road', ODR: 'Other District Road' }[c.name] + ')' }); }), 'No works in this period.');
+  }
+  /* tooltip on hover (mouse) or tap (phone) for any mark with data-tip */
+  (function () {
+    var tip = $('#tip'), cur = null;
+    function place(el, x, y) {
+      tip.textContent = el.dataset.tip; tip.hidden = false;
+      var w = tip.offsetWidth, h = tip.offsetHeight;
+      tip.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x - w / 2)) + 'px';
+      tip.style.top = Math.max(8, y - h - 12) + 'px';
+    }
+    $('#fDash').addEventListener('pointermove', function (e) {
+      var el = e.target.closest('[data-tip]');
+      if (!el) { if (e.pointerType === 'mouse') { tip.hidden = true; cur = null; } return; }
+      cur = el; place(el, e.clientX, e.clientY);
+    });
+    $('#fDash').addEventListener('pointerdown', function (e) {
+      var el = e.target.closest('[data-tip]');
+      if (!el) { tip.hidden = true; cur = null; return; }
+      var r = el.getBoundingClientRect(); cur = el; place(el, r.left + r.width / 2, r.top);
+    });
+    $('#fDash').addEventListener('pointerleave', function () { tip.hidden = true; cur = null; });
+    window.addEventListener('scroll', function () { tip.hidden = true; }, { passive: true });
+  })();
+
   /* ---------- sign-in, password ---------- */
   function saveSession() { try { localStorage.setItem('hd-session-v2', JSON.stringify(session)); } catch (e) {} }
   function show(which) {
     $('#fLogin').hidden = which !== 'login'; $('#fSetPw').hidden = which !== 'setpw';
     var app = which === 'app';
     $('#appBar').hidden = !app; $('#userBar').hidden = !app;
-    if (!app) { $('#fNew').hidden = true; $('#fUpd').hidden = true; $('#fOff').hidden = true; }
+    if (!app) { $('#fDash').hidden = true; $('#fNew').hidden = true; $('#fUpd').hidden = true; $('#fOff').hidden = true; }
   }
   function applySession(s) {
     session = s; setupToken = null;
@@ -861,11 +1055,12 @@ input[readonly]{background:var(--sunk)}
     $('#gps').hidden = !(u.rights.enter || u.rights.update);
     var m = mem();
     $('#person').value = m.person || ''; $('#mobile').value = m.mobile || ''; $('#uperson').value = m.person || '';
-    found = []; selected = null; listLoaded = false; offLoaded = false; OFFICES = [];
+    found = []; selected = null; listLoaded = false; offLoaded = false; OFFICES = []; dashLoaded = false;
     $('#updBody').hidden = true; $('#codesBox').hidden = true;
     show('app');
-    if (u.rights.enter) { clearNew(); loadLists(); tab('new'); }
-    else { tab('upd'); search(); }
+    if (u.rights.enter) clearNew(), loadLists();
+    if (u.rights.enter) tab('new');
+    else { tab('dash'); loadDash(); } // monitoring offices open on the dashboard
   }
   function signOut(message) {
     session = null; FIXED = {}; ROWS = [];
@@ -897,7 +1092,7 @@ input[readonly]{background:var(--sunk)}
       ? 'Other phones signed in to this office will be signed out.'
       : 'Code accepted for ' + username + '. Set the password your office will use from now on. The code stops working once you save.';
     msg('#msgSetPw', '');
-    if (mode === 'change') { $('#appBar').hidden = true; $('#fNew').hidden = true; $('#fUpd').hidden = true; $('#fOff').hidden = true; $('#fLogin').hidden = true; $('#fSetPw').hidden = false; }
+    if (mode === 'change') { $('#appBar').hidden = true; $('#fDash').hidden = true; $('#fNew').hidden = true; $('#fUpd').hidden = true; $('#fOff').hidden = true; $('#fLogin').hidden = true; $('#fSetPw').hidden = false; }
     else show('setpw');
   }
   $('#changePwBtn').onclick = function () { openSetPw('change'); };
